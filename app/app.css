@@ -1,0 +1,33 @@
+/* reference-dashboard — author CSS.
+ *
+ * Boundary (docs/reference-dashboard.md): Tailwind variant classes
+ * (hover:, focus:, …) are deferred in Tailwind Profile v0, but author CSS
+ * with the frozen interaction pseudo-class set (:hover/:focus/:active)
+ * is supported (ADR 0011 / M4b) and may change ONLY the interaction
+ * paint properties: background-color, background, color, border-color,
+ * border-style, border-radius, cursor. Every rule below stays inside
+ * that set.
+ */
+
+/* Navigation rail: hover feedback + selected-item emphasis */
+.vv-nav:hover {
+  background-color: #1e293b; /* slate-800 */
+  color: #e2e8f0;            /* slate-200 */
+}
+
+/* Record rows: hover invites selection; the selected row's paint comes
+ * from its :class alternatives (complete Tailwind token sets), not here */
+.vv-row:hover {
+  background-color: #f1f5f9; /* slate-100 */
+}
+
+/* Inputs: focus ring within the paint-property set */
+.vv-input:focus {
+  border-color: #6366f1; /* indigo-500 */
+}
+
+/* dev-watch probe */
+.vv-row:hover { background: #eef2ff; }
+
+/* dev-watch probe 2 */
+/* probe 2348541 */

@@ -1,0 +1,384 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Gate Operations — VelquView Reference Dashboard</title>
+</head>
+<body class="bg-slate-100">
+  <!--
+    M7 reference dashboard. One vx-state scope; every list is an
+    explicitly authored row set filtered through vx-show predicates
+    (vx-for is deferred in the reactive v0 profile — see
+    docs/reference-dashboard.md). Section content is authored per
+    section; per-record detail + edit forms are authored per record.
+  -->
+  <main
+    vx-state="{
+      section: 'shipments',
+      search: '',
+      selected: 'TRK-8841',
+      name_8841: 'Budi Santoso', notes_8841: 'Priority unload, bay 3', saved_8841: true,
+      name_2210: 'Siti Rahayu',  notes_2210: 'Waiting for customs release', saved_2210: true,
+      name_5519: 'Agus Wijaya',  notes_5519: 'Re-inspection scheduled 14:00', saved_5519: true,
+      name_3307: 'Dewi Lestari', notes_3307: '', saved_3307: true,
+      name_7742: 'Eko Prasetyo', notes_7742: 'Late arrival, rescheduled', saved_7742: true,
+      name_9158: 'Rina Halim',   notes_9158: '', saved_9158: true
+    }"
+    class="flex h-full"
+  >
+    <!-- Navigation rail -->
+    <aside class="w-64 h-full bg-slate-900 p-4">
+      <h1 class="text-xl font-bold text-white p-2">Gate Ops</h1>
+      <p class="text-xs text-slate-500 px-2 mt-1">Port Kalibaru · Terminal 3</p>
+      <button
+        id="nav-shipments"
+        data-vv-test="nav-shipments"
+        @click="section = 'shipments'"
+        :class="section === 'shipments' ? 'vv-nav block w-full text-left rounded-md px-3 py-2 mt-3 font-semibold bg-indigo-600 text-white' : 'vv-nav block w-full text-left rounded-md px-3 py-2 mt-3 font-medium text-slate-400'"
+      >Shipments</button>
+      <button
+        id="nav-gates"
+        data-vv-test="nav-gates"
+        @click="section = 'gates'"
+        :class="section === 'gates' ? 'vv-nav block w-full text-left rounded-md px-3 py-2 mt-1 font-semibold bg-indigo-600 text-white' : 'vv-nav block w-full text-left rounded-md px-3 py-2 mt-1 font-medium text-slate-400'"
+      >Gates</button>
+      <button
+        id="nav-reports"
+        data-vv-test="nav-reports"
+        @click="section = 'reports'"
+        :class="section === 'reports' ? 'vv-nav block w-full text-left rounded-md px-3 py-2 mt-1 font-semibold bg-indigo-600 text-white' : 'vv-nav block w-full text-left rounded-md px-3 py-2 mt-1 font-medium text-slate-400'"
+      >Reports</button>
+      <p class="text-xs text-slate-600 px-2 mt-8">VelquView M7 reference</p>
+    </aside>
+
+    <!-- Shipments: summary + searchable records + detail/edit -->
+    <section data-vv-test="section-shipments" vx-show="section === 'shipments'" class="flex-1 p-8 h-full">
+      <header class="flex justify-between items-center">
+        <h2 class="text-2xl font-bold text-slate-900">Shipments</h2>
+        <div>
+          <label for="search" class="block text-xs text-slate-500 text-right">Search shipments</label>
+          <input
+            id="search"
+            data-vv-test="search"
+            vx-model="search"
+            class="vv-input mt-1 w-72 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+          >
+        </div>
+      </header>
+      <p class="text-xs text-slate-500 mt-1">Search filters by truck, gate, status, or driver. List and detail update together.</p>
+
+      <div class="grid grid-cols-3 gap-4 mt-4">
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-xs text-slate-500">Records shown</p>
+          <p
+            data-vv-test="summary-shown"
+            class="text-3xl font-bold text-slate-900 mt-2"
+            vx-text="(search === '' || 'trk-8841 gate a cleared budi santoso'.includes(search.toLowerCase()) ? 1 : 0) + (search === '' || 'trk-2210 gate b waiting siti rahayu'.includes(search.toLowerCase()) ? 1 : 0) + (search === '' || 'trk-5519 gate a rejected agus wijaya'.includes(search.toLowerCase()) ? 1 : 0) + (search === '' || 'trk-3307 gate c cleared dewi lestari'.includes(search.toLowerCase()) ? 1 : 0) + (search === '' || 'trk-7742 gate b waiting eko prasetyo'.includes(search.toLowerCase()) ? 1 : 0) + (search === '' || 'trk-9158 gate a cleared rina halim'.includes(search.toLowerCase()) ? 1 : 0)"
+          >6</p>
+        </div>
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-xs text-slate-500">Unsaved edits</p>
+          <p
+            data-vv-test="summary-unsaved"
+            class="text-3xl font-bold text-amber-600 mt-2"
+            vx-text="(saved_8841 ? 0 : 1) + (saved_2210 ? 0 : 1) + (saved_5519 ? 0 : 1) + (saved_3307 ? 0 : 1) + (saved_7742 ? 0 : 1) + (saved_9158 ? 0 : 1)"
+          >0</p>
+        </div>
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-xs text-slate-500">Waiting at gate</p>
+          <p data-vv-test="summary-waiting" class="text-3xl font-bold text-slate-900 mt-2">2</p>
+        </div>
+      </div>
+
+      <!-- The pair auto-heights to the detail card; only the records
+           list scrolls (overflow-y-auto + paint-side wheel scrolling,
+           ADR 0008) -->
+      <div class="flex mt-6 items-start">
+        <!-- Records list (authored rows; vx-show filtering) -->
+        <div class="flex-1 h-80 overflow-y-auto bg-white rounded-lg border mr-6 p-3">
+          <div
+            id="row-8841"
+            data-vv-test="row-8841"
+            @click="selected = 'TRK-8841'"
+            vx-show="search === '' || 'trk-8841 gate a cleared budi santoso'.includes(search.toLowerCase())"
+            :class="selected === 'TRK-8841' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">TRK-8841 · Gate A</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-2210"
+            data-vv-test="row-2210"
+            @click="selected = 'TRK-2210'"
+            vx-show="search === '' || 'trk-2210 gate b waiting siti rahayu'.includes(search.toLowerCase())"
+            :class="selected === 'TRK-2210' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">TRK-2210 · Gate B</p>
+            <p class="text-xs font-bold text-amber-500">WAITING</p>
+          </div>
+          <div
+            id="row-5519"
+            data-vv-test="row-5519"
+            @click="selected = 'TRK-5519'"
+            vx-show="search === '' || 'trk-5519 gate a rejected agus wijaya'.includes(search.toLowerCase())"
+            :class="selected === 'TRK-5519' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">TRK-5519 · Gate A</p>
+            <p class="text-xs font-bold text-red-500">REJECTED</p>
+          </div>
+          <div
+            id="row-3307"
+            data-vv-test="row-3307"
+            @click="selected = 'TRK-3307'"
+            vx-show="search === '' || 'trk-3307 gate c cleared dewi lestari'.includes(search.toLowerCase())"
+            :class="selected === 'TRK-3307' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">TRK-3307 · Gate C</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-7742"
+            data-vv-test="row-7742"
+            @click="selected = 'TRK-7742'"
+            vx-show="search === '' || 'trk-7742 gate b waiting eko prasetyo'.includes(search.toLowerCase())"
+            :class="selected === 'TRK-7742' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">TRK-7742 · Gate B</p>
+            <p class="text-xs font-bold text-amber-500">WAITING</p>
+          </div>
+          <div
+            id="row-9158"
+            data-vv-test="row-9158"
+            @click="selected = 'TRK-9158'"
+            vx-show="search === '' || 'trk-9158 gate a cleared rina halim'.includes(search.toLowerCase())"
+            :class="selected === 'TRK-9158' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">TRK-9158 · Gate A</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            data-vv-test="no-results"
+            vx-show="search !== '' && !('trk-8841 gate a cleared budi santoso'.includes(search.toLowerCase()) || 'trk-2210 gate b waiting siti rahayu'.includes(search.toLowerCase()) || 'trk-5519 gate a rejected agus wijaya'.includes(search.toLowerCase()) || 'trk-3307 gate c cleared dewi lestari'.includes(search.toLowerCase()) || 'trk-7742 gate b waiting eko prasetyo'.includes(search.toLowerCase()) || 'trk-9158 gate a cleared rina halim'.includes(search.toLowerCase()))"
+            class="rounded-md border border-slate-300 px-3 py-6 mt-4"
+          >
+            <p class="text-sm font-medium text-slate-500 text-center">No shipments match this search.</p>
+            <p class="text-xs text-slate-400 text-center mt-1">Clear the search box to see all six records.</p>
+          </div>
+        </div>
+
+        <!-- Detail + edit panel (authored per record; ordinary layout, no modal) -->
+        <div class="w-96">
+          <div data-vv-test="detail-8841" vx-show="selected === 'TRK-8841'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">TRK-8841</p>
+            <p class="text-xs text-slate-500 mt-1">Gate A · Cleared · Container TCLU 4407123</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-8841">Driver name</label>
+            <input
+              id="edit-name-8841"
+              data-vv-test="edit-name"
+              vx-model="name_8841"
+              @input="saved_8841 = false"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-8841">Notes</label>
+            <textarea
+              id="edit-notes-8841"
+              data-vv-test="edit-notes"
+              vx-model="notes_8841"
+              @input="saved_8841 = false"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <button
+              id="save-8841"
+              data-vv-test="save"
+              @click="saved_8841 = true"
+              :disabled="saved_8841"
+              :class="saved_8841 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save changes</button>
+            <p data-vv-test="saved-flag" vx-show="saved_8841" class="mt-2 text-xs text-emerald-600">All changes saved.</p>
+          </div>
+
+          <div data-vv-test="detail-2210" vx-show="selected === 'TRK-2210'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">TRK-2210</p>
+            <p class="text-xs text-slate-500 mt-1">Gate B · Waiting · Container MRKU 8890145</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-2210">Driver name</label>
+            <input
+              id="edit-name-2210"
+              vx-model="name_2210"
+              @input="saved_2210 = false"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-2210">Notes</label>
+            <textarea
+              id="edit-notes-2210"
+              vx-model="notes_2210"
+              @input="saved_2210 = false"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <button
+              id="save-2210"
+              @click="saved_2210 = true"
+              :disabled="saved_2210"
+              :class="saved_2210 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save changes</button>
+            <p vx-show="saved_2210" class="mt-2 text-xs text-emerald-600">All changes saved.</p>
+          </div>
+
+          <div data-vv-test="detail-5519" vx-show="selected === 'TRK-5519'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">TRK-5519</p>
+            <p class="text-xs text-slate-500 mt-1">Gate A · Rejected · Seal mismatch</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-5519">Driver name</label>
+            <input
+              id="edit-name-5519"
+              vx-model="name_5519"
+              @input="saved_5519 = false"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-5519">Notes</label>
+            <textarea
+              id="edit-notes-5519"
+              vx-model="notes_5519"
+              @input="saved_5519 = false"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <button
+              id="save-5519"
+              @click="saved_5519 = true"
+              :disabled="saved_5519"
+              :class="saved_5519 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save changes</button>
+            <p vx-show="saved_5519" class="mt-2 text-xs text-emerald-600">All changes saved.</p>
+          </div>
+
+          <div data-vv-test="detail-3307" vx-show="selected === 'TRK-3307'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">TRK-3307</p>
+            <p class="text-xs text-slate-500 mt-1">Gate C · Cleared · Reefer cargo</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-3307">Driver name</label>
+            <input
+              id="edit-name-3307"
+              vx-model="name_3307"
+              @input="saved_3307 = false"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-3307">Notes</label>
+            <textarea
+              id="edit-notes-3307"
+              vx-model="notes_3307"
+              @input="saved_3307 = false"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <button
+              id="save-3307"
+              @click="saved_3307 = true"
+              :disabled="saved_3307"
+              :class="saved_3307 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save changes</button>
+            <p vx-show="saved_3307" class="mt-2 text-xs text-emerald-600">All changes saved.</p>
+          </div>
+
+          <div data-vv-test="detail-7742" vx-show="selected === 'TRK-7742'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">TRK-7742</p>
+            <p class="text-xs text-slate-500 mt-1">Gate B · Waiting · Slot 14:30</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-7742">Driver name</label>
+            <input
+              id="edit-name-7742"
+              vx-model="name_7742"
+              @input="saved_7742 = false"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-7742">Notes</label>
+            <textarea
+              id="edit-notes-7742"
+              vx-model="notes_7742"
+              @input="saved_7742 = false"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <button
+              id="save-7742"
+              @click="saved_7742 = true"
+              :disabled="saved_7742"
+              :class="saved_7742 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save changes</button>
+            <p vx-show="saved_7742" class="mt-2 text-xs text-emerald-600">All changes saved.</p>
+          </div>
+
+          <div data-vv-test="detail-9158" vx-show="selected === 'TRK-9158'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">TRK-9158</p>
+            <p class="text-xs text-slate-500 mt-1">Gate A · Cleared · Empty return</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-9158">Driver name</label>
+            <input
+              id="edit-name-9158"
+              vx-model="name_9158"
+              @input="saved_9158 = false"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-9158">Notes</label>
+            <textarea
+              id="edit-notes-9158"
+              vx-model="notes_9158"
+              @input="saved_9158 = false"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <button
+              id="save-9158"
+              @click="saved_9158 = true"
+              :disabled="saved_9158"
+              :class="saved_9158 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save changes</button>
+            <p vx-show="saved_9158" class="mt-2 text-xs text-emerald-600">All changes saved.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gates section -->
+    <section data-vv-test="section-gates" vx-show="section === 'gates'" class="flex-1 p-8 h-full">
+      <header>
+        <h2 class="text-2xl font-bold text-slate-900">Gates</h2>
+        <p class="text-xs text-slate-500 mt-1">Live lane status across the terminal.</p>
+      </header>
+      <div class="grid grid-cols-3 gap-4 mt-6">
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-lg font-bold text-slate-900">Gate A</p>
+          <p class="text-xs text-slate-500 mt-1">2 lanes open · OCR healthy</p>
+          <p class="text-3xl font-bold text-emerald-600 mt-2">3</p>
+          <p class="text-xs text-slate-500">cleared today</p>
+        </div>
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-lg font-bold text-slate-900">Gate B</p>
+          <p class="text-xs text-slate-500 mt-1">1 lane open · manual check</p>
+          <p class="text-3xl font-bold text-amber-500 mt-2">2</p>
+          <p class="text-xs text-slate-500">waiting now</p>
+        </div>
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-lg font-bold text-slate-900">Gate C</p>
+          <p class="text-xs text-slate-500 mt-1">1 lane open · reefer priority</p>
+          <p class="text-3xl font-bold text-emerald-600 mt-2">1</p>
+          <p class="text-xs text-slate-500">cleared today</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-lg border p-4 mt-6">
+        <p class="text-sm font-semibold text-slate-800">Lane assignment notes</p>
+        <p class="text-sm text-slate-600 mt-2">Gate B lane 2 closes 16:00 for seal-scanner maintenance; waiting trucks roll to lane 1.</p>
+        <p class="text-sm text-slate-600 mt-1">Reefer units route to Gate C on arrival priority.</p>
+      </div>
+    </section>
+
+    <!-- Reports section -->
+    <section data-vv-test="section-reports" vx-show="section === 'reports'" class="flex-1 p-8 h-full">
+      <header>
+        <h2 class="text-2xl font-bold text-slate-900">Reports</h2>
+        <p class="text-xs text-slate-500 mt-1">Today versus this week (fixed local dataset).</p>
+      </header>
+      <div class="bg-white rounded-lg border p-4 mt-6">
+        <p class="text-sm font-semibold text-slate-800">Gate-ins · today 1,284 · week 8,930</p>
+        <div class="w-full bg-slate-100 rounded h-3 mt-3"><div class="w-24 bg-indigo-600 rounded h-3"></div></div>
+        <p class="text-sm font-semibold text-slate-800 mt-6">Exceptions · today 3 · week 11</p>
+        <div class="w-full bg-slate-100 rounded h-3 mt-3"><div class="w-16 bg-red-500 rounded h-3"></div></div>
+        <p class="text-sm font-semibold text-slate-800 mt-6">Average dwell · today 14 min · week 17 min</p>
+        <div class="w-full bg-slate-100 rounded h-3 mt-3"><div class="w-72 bg-emerald-600 rounded h-3"></div></div>
+      </div>
+      <p class="text-xs text-slate-400 mt-4">Export opens in the terminal reporting tool (not part of this reference).</p>
+    </section>
+  </main>
+</body>
+</html>

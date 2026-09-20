@@ -1,0 +1,20 @@
+[package]
+name = "velqu-view-starter"
+description = "External-consumer starter app for VelquView: the M7 reference dashboard, standalone."
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.87"
+license = "MIT OR Apache-2.0"
+publish = false
+
+# VelquView baseline pin. The short id 1d0a562 is the Phase-1 closure
+# record's amendment-identity commit (see docs/evidence/phase1-closure.md
+# in the framework repository); the full SHA is recorded here and the
+# committed Cargo.lock pins the entire dependency tree.
+[dependencies]
+velqu-view = { git = "https://github.com/ther12k/velqu-view.git", rev = "1d0a562bccdcb21c657423ca8b568cc2beebff88" }
+velqu-shell = { git = "https://github.com/ther12k/velqu-view.git", rev = "1d0a562bccdcb21c657423ca8b568cc2beebff88" }
+
+# Diagnostic examples only (examples/*_probe.rs); not used by the app.
+[dev-dependencies]
+notify = "8.2.0"

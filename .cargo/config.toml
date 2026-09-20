@@ -1,0 +1,5 @@
+# Fetch git dependencies with the git CLI so the host's normal
+# credentials apply. Needed when the VelquView repository is private
+# for your account; harmless when it is public.
+[net]
+git-fetch-with-cli = true

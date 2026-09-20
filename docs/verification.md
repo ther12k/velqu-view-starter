@@ -1,0 +1,137 @@
+# velqu-view-starter — verification report
+
+Date: 2026-09-20 · Machine: Linux 6.x, X11 (`DISPLAY=:1`), rustup
+toolchain 1.96.0.
+
+## 1. Scope and pinned baseline
+
+The claim under test: **another developer can build and run an
+application on VelquView without the framework's development workspace
+or private implementation details.**
+
+- VelquView revision: `1d0a562bccdcb21c657423ca8b568cc2beebff88`
+  (short `1d0a562` — the Phase-1 closure record's amendment-identity
+  commit; the closure record itself is
+  `docs/evidence/phase1-closure.md` in the framework repository).
+  Pinned by full SHA as a `rev = …` git dependency for `velqu-view`
+  and `velqu-shell` in `Cargo.toml`; `Cargo.lock` (committed) pins
+  the full dependency tree.
+- Boundary: **public crates only.** No engine code copied, no private
+  APIs, no `[patch]` or source replacement (the framework's
+  dependencies are all public on crates.io at this revision). The
+  framework repository was not modified.
+- The dev host `velqu-lab` is consumed as a binary via
+  `cargo install --git … --rev … velqu-lab` (same revision), never as
+  a library.
+- Application assets (`app/index.html`, `app/app.css`) are copied from
+  `examples/reference-dashboard` at `1d0a562`; the digest identity
+  below proves they render byte-identically.
+
+## 2. Verification runs
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Clean build (debug) | `cargo build` | ok, 1m10s — git deps fetched from the (private) repo via CLI credentials |
+| Release build | `cargo build --release` | ok, 2m21s |
+| Public-API suite | `cargo test` | **6/6 passed** |
+| Window smoke | `./target/release/velqu-view-starter --exit-after-ms 4000` | ok — 31 frames presented in 4.0s |
+| Launch from unrelated dir (exe-relative assets) | `cd /tmp && …/target/release/velqu-view-starter --headless --out /tmp/…` | ok — resolved `app/` via the executable path; `sha256: a89813c5…` |
+| Launch with **no app dir anywhere** (embedded fallback) | bare binary copied to `/tmp`, run there | ok — `app: embedded build-time copy`; same `sha256: a89813c5…` |
+| Dev wrapper | `./dev.sh --exit-after-ms 4000` | ok — uses installed `velqu-lab`; 2 frames in 4.0s |
+| Dev host install | `cargo install --git … --rev 1d0a562… velqu-lab` | ok — 2m34s, `~/.cargo/bin/velqu-lab` |
+
+**Digest identity.** The starter's initial frame at 1280×800 @1.0
+equals the accepted M7 baseline
+`a89813c53c651e717abfd7926bcac5974149440005055bf1f45f93cd747a8c5c`
+(frozen in the framework's conformance suite at the pinned revision)
+— reproduced in the `cargo test` suite, in headless CLI runs, from an
+unrelated working directory, and from the embedded fallback. The
+external git-dependency pipeline renders pixel-for-pixel like the
+framework workspace build.
+
+**Interactions through the public API** (`tests/dashboard.rs`, all
+through `velqu_view` as an external consumer): search filtering
+updates the summary and hides/shows rows together; section navigation
+switches `vx-show` sections; row selection swaps the detail panel and
+the hit-testable edit inputs; editing emits `ValueChanged`, flips the
+unsaved counter, and Save restores it; wheel over the records list
+emits `Scrolled` with a clamped offset. Pointer positions come from
+hit-test scans, never fixed coordinates.
+
+## 3. Live hot reload defect (the concrete blocker)
+
+**Claim: `velqu-lab --watch` never reconciles a live window at this
+revision** — for any backend, any number of saves, with or without
+unrelated input. This is the open release-qualification item
+("live-window wakeup counts under `--watch`") from the Phase-1
+closure record, now with a root cause.
+
+### Evidence
+
+Seven lab runs (installed binary **and** a rebuild from the framework
+checkout at `1d0a562`, which behaves identically): native and poll
+backends; single save, double save 2s apart, unregistered-file write,
+metadata touch, and synthetic mouse input — **zero reconciles** in
+every run, while each half of the chain works standalone:
+
+- `examples/watch_probe.rs`: sends `ShellUserEvent::Watch` from a
+  thread at t=3/6/9s through the **public** `velqu_shell::
+  run_with_watch` — the hook runs within ~10ms of every send. The
+  shell's proxy→hook path is sound.
+- A standalone `notify` 8.2 probe on the same directory receives
+  `Modify(Data)` inotify events for appends. Event delivery is sound.
+- `examples/chain_probe.rs`: replicates the lab's exact composition
+  (notify watcher → wake closure → proxy → hook) on the public API,
+  with a trace at every hop — all hops fire and the hook runs at
+  edit time.
+
+### Root cause (both parts inside velqu-lab, not the library)
+
+1. **The debounce clock can never elapse.** The startup rescan leaves
+   the coordinator's dirty set non-empty (it drains only inside a
+   reconcile), and `Coordinator::notify` restarts the quiet-interval
+   clock (`last_change_ms := now`) on *every* wakeup while the dirty
+   set is non-empty — even when the notification matched no registered
+   path. The hook runs only at wake instants, so `now − last_change`
+   is ~0 at every invocation and `due()` (≥120ms) never holds.
+2. **Nothing re-wakes the loop after the quiet interval.** Under
+   `ControlFlow::Wait` the loop sleeps until an event; even with (1)
+   fixed, a single save would need a second wake ≥120ms later, and no
+   timer or delayed re-send exists. (Synthetic input does not help:
+   the shell runs the hook only on a Watch wakeup, not on input.)
+
+The M6c evidence base is logical tests with synthetic clocks (`now_ms`
+driven past the quiet window), which is why this survived review; live
+wake timing was explicitly the deferred qualification item.
+
+### Smallest proposed change (framework-side, no public API change)
+
+In `velqu-lab`: (a) `Coordinator::notify` updates `last_change_ms`
+only when the notification actually marked something (a rescan or ≥1
+registered-path match); (b) the lab's wake closure — it already holds
+the loop proxy — schedules one delayed re-send of
+`ShellUserEvent::Watch` at `quiet_ms + ε` after each notification, so
+the quiet interval can elapse inside a waiting loop. Suggested
+regression: a live smoke that edits a registered file and asserts a
+published reload within ~1s with no input events.
+
+### Starter impact
+
+`dev.sh` runs `velqu-lab` **without** `--watch` and documents the
+restart loop (edit → `Esc` → rerun). No framework scope was widened
+and no workaround host was built — the defect is reported for a
+future framework slice, per the external-consumer contract.
+
+## 4. Boundaries of this verification
+
+- Single machine, single session type (X11). Wayland and other
+  platforms unverified here.
+- Windowed presentation was smoke-tested (frames presented, clean
+  auto-close); interactive input was driven programmatically through
+  the public API, not scripted GUI input.
+- No startup/latency or memory measurements here — those belong to
+  the separate release-qualification track against this starter, not
+  to the starter's acceptance.
+- The embedded fallback equals the on-disk assets as of the build;
+  editing files requires a rebuild only when no `app/` directory is
+  found.

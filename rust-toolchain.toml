@@ -1,0 +1,6 @@
+# Same pinned development toolchain as the VelquView framework repo at
+# the pinned revision, so local builds are reproducible. The framework's
+# MSRV is 1.87 (fontdue 0.9.4 requires stable integer_sign_cast).
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy"]
