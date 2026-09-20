@@ -166,3 +166,110 @@ Verified through this starter's own `dev.sh`: window opened with
 reconciled on its own (`watch: reconciled kind=Stylesheets
 generation=None`), clean exit. The startup rescan pass counted as one
 unchanged-skip reconciliation, exactly as designed.
+
+## 6. Operations workflow + qualification (2026-09-21)
+
+### 6.1 The workflow pilot (commit `cd0d3e7`)
+
+The first real operator journey, per the accepted work order: find a
+record → inspect its details → change the permitted fields → validate
+→ save → confirm. Business content: gate-transaction review &
+correction (`ops/`, 14 authored transactions; editable driver name +
+notes; rules: name 1–80 chars after trim, notes ≤ 280).
+
+**Save semantics** (the order's central requirement): the UI runtime
+never touches the disk — a Save click only marks the document
+"Saving…". The application host observes the public event queue,
+re-validates authoritatively, writes `records.json` (atomic
+tmp+rename) into an explicit data dir, and reloads the document from
+persisted truth with the host timestamp shown ("Saved to device at …
+— survives restart."). Unsaved edits are in-memory only; dev mode
+(velqu-lab) has no store and the rail says so. No server integration
+exists in the pilot; a future host adapter lives beside `RecordStore`,
+not in the renderer.
+
+**Why the host owns its window loop** (`src/window.rs`):
+`velqu_shell::run` forwards input to the view and drops the event
+batch by design, so no host can observe Save clicks through it. The
+starter's loop is public-API only (winit + softbuffer + arboard +
+VelquView), mirrors the shell's semantics (Wait control flow,
+AltGr-safe routing, IME/clipboard via public traits), and adds the
+one thing the workflow needs: the drained batch is handed to the host
+hook between the reactive pump and the render. `velqu-shell` remains
+a dev-dependency for the §3 probes only.
+
+Evidence:
+
+- `tests/operations.rs` (7 tests, public API + host code): template
+  structural contract; find/inspect (live-name search); validation
+  blocking (empty name, 281-char notes, disabled-save click cannot
+  even request a save); save→persist→confirm with search/selection
+  preserved and an earlier session's override intact; rejection
+  handling keeps drafts on screen; dev-mode document never claims a
+  durable save; process-level durability (binary run twice — save in
+  one process, `--print-record` in a fresh one, plus a headless
+  startup over the populated store).
+- Windowed end-to-end on X11 with real input (xdotool): row select →
+  ctrl+a → type → Save click → `ops: saved gt-2403 at … (generation
+  2)` on stdout, `records.json` written, on-screen confirmation
+  banner carrying the same timestamp. This drive found and fixed a
+  match-scrutinee `RefCell` double-borrow that crashed the host after
+  the first successful save.
+- `tests/dashboard.rs` and `app/` are byte-unchanged: the
+  framework-consumer evidence (M7 baseline digest) survives the
+  business-content change, as required.
+- Dev loop: `./dev.sh` (ops default) hot-reloads through the pinned
+  dev tool — `watch: reconciled kind=Stylesheets …` after a CSS edit,
+  native backend, X11.
+
+### 6.2 Qualification (release app, watching/inspection disabled)
+
+Via `tools/qualify.sh` (committed; raw logs in its work dir). Machine:
+the development workstation, X11 lane (`:1`). **Wayland lane
+unavailable** (no compositor socket) — not claimed. Distinctions kept:
+launch→first presentation ≠ render wall time; current RSS ≠ peak; a
+bounded reload run establishes behavior over that run only.
+
+**A. Launch → first presentation** (release, windowed, 5 runs):
+91 / 110 / 135 / 103 / 171 ms (median ≈ 110 ms) at 1280×800@1.0.
+Render wall time (headless, single first render, 3 runs): 12–14 ms —
+the remaining ~100 ms is process start, store open, state injection,
+parse + Tailwind compile + layout + present.
+
+**B. Idle, 60 s, release app**: RSS 59,408 → 59,488 kB (+80 kB,
+HWM equal — no growth); wakeups 290 voluntary + 40 nonvoluntary over
+58 s (≤ ~5.7/s; an isolated 12 s window measured **0** wakeups — the
+60 s figures include session/compositor expose traffic while other
+windows changed); CPU 290 ms ≈ 0.5%.
+
+**B2. Idle, 60 s, development configuration** (velqu-lab `--watch`,
+dev-tool rev `3c1ee34`): RSS flat 56,608 kB; wakeups 593 voluntary
+(≈10/s — the watcher's own activity, attributed to the dev tool, not
+the app); CPU 290 ms ≈ 0.5%.
+
+**C. Bounded reload run** (25 Save cycles through the windowed app —
+each cycle = full host path: validate → persist → `reload_bundle` →
+render; real keyboard/pointer input): 24 saves published (generation
+reached 25; one click raced its 0.55 s step budget), confirmed in
+stdout and `records.json`. RSS: 59,488 kB at t=0 → 98,604 kB by save 5
+→ **exactly flat through save 25** (HWM equal). The +39 MB saturates
+rather than accumulating per reload — over this run the reload path
+is memory-bounded; it is not a universal leak-free guarantee.
+CPU ≈ 170 ms per type+save+reload+present cycle.
+
+**C2. Bounded reload, development configuration** (25 CSS edits, one
+per ~1.2 s, under `--watch`): 25/25 reconciles published
+(`reconciliations: 26`, no deferrals) — the repaired watcher holds up
+under a sustained edit loop on the ops app as well.
+
+### 6.3 Observations (not fixed here, recorded for scoping)
+
+- `velqu-lab --watch` with a **relative** app-dir registers relative
+  source paths while native notifications arrive as absolute paths,
+  so nothing matches and no reconcile is ever scheduled. All
+  supported entry points (dev.sh) pass absolute paths; the live-watch
+  regression tests use absolute temp dirs. A framework-side
+  canonicalization fix would be its own small post-closure change.
+- Layout-facts `text_runs` join without inter-run spacing, so
+  multi-word assertions in public-API tests must normalize whitespace
+  (the rendered rasters are correct — verified visually).
