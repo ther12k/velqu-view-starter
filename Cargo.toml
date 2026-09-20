@@ -1,6 +1,6 @@
 [package]
 name = "velqu-view-starter"
-description = "External-consumer starter app for VelquView: the M7 reference dashboard, standalone."
+description = "External-consumer starter app for VelquView: the gate-transaction operations workflow, standalone."
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.87"
@@ -10,11 +10,28 @@ publish = false
 # VelquView baseline pin. The short id 1d0a562 is the Phase-1 closure
 # record's amendment-identity commit (see docs/evidence/phase1-closure.md
 # in the framework repository); the full SHA is recorded here and the
-# committed Cargo.lock pins the entire dependency tree.
+# committed Cargo.lock pins the entire dependency tree. The dev tool
+# (velqu-lab, via dev.sh) is pinned SEPARATELY at 3c1ee34 — see
+# README.md's revision table.
 [dependencies]
 velqu-view = { git = "https://github.com/ther12k/velqu-view.git", rev = "1d0a562bccdcb21c657423ca8b568cc2beebff88" }
-velqu-shell = { git = "https://github.com/ther12k/velqu-view.git", rev = "1d0a562bccdcb21c657423ca8b568cc2beebff88" }
+
+# The application host owns its window loop (src/window.rs): the
+# operations workflow must observe public events so a Save click can
+# reach host-side persistence — velqu-shell's run() deliberately drops
+# the event batch. Same public crates the framework shell uses.
+winit = "0.30"
+softbuffer = "0.4"
+arboard = "3"
+
+# Host-side persistence (records.json): an application-host concern,
+# explicitly not part of the renderer.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 # Diagnostic examples only (examples/*_probe.rs); not used by the app.
+# velqu-shell is here for the two watch-defect probes, which reproduce
+# the 1d0a562 --watch evidence through the shell's run_with_watch path.
 [dev-dependencies]
+velqu-shell = { git = "https://github.com/ther12k/velqu-view.git", rev = "1d0a562bccdcb21c657423ca8b568cc2beebff88" }
 notify = "8.2.0"

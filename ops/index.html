@@ -1,0 +1,784 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Gate Transactions — velqu-view-starter</title>
+</head>
+<body class="bg-slate-100">
+  <!--
+    Operations workflow: gate-transaction review & correction. Same
+    reactive idiom as the reference dashboard (one vx-state scope,
+    authored rows + per-record detail panels, vx-show filtering; vx-for
+    is deferred in reactive profile v0). The vx-state attribute below
+    is the ONLY part the release host rewrites: it parses the seed
+    block (strict one-pair-per-line format — see src/ops/state.rs),
+    applies persisted overrides from records.json, and reloads the
+    document. In dev mode (velqu-lab) the seed values are used as-is
+    and edits stay in memory.
+  -->
+  <main
+    vx-state="{
+      selected: 'gt-2401',
+      search: '',
+      store_note: 'Dev mode — edits stay in memory (velqu-lab)',
+      name_2401: 'Budi Santoso',
+      notes_2401: 'Priority unload, bay 3',
+      saved_2401: true,
+      pending_2401: false,
+      error_2401: '',
+      saved_at_2401: '',
+      name_2402: 'Siti Rahayu',
+      notes_2402: 'Customs hold released 07:05',
+      saved_2402: true,
+      pending_2402: false,
+      error_2402: '',
+      saved_at_2402: '',
+      name_2403: 'Agus Wijaya',
+      notes_2403: 'Seal mismatch — re-inspection 14:00',
+      saved_2403: true,
+      pending_2403: false,
+      error_2403: '',
+      saved_at_2403: '',
+      name_2404: 'Dewi Lestari',
+      notes_2404: '',
+      saved_2404: true,
+      pending_2404: false,
+      error_2404: '',
+      saved_at_2404: '',
+      name_2405: 'Eko Prasetyo',
+      notes_2405: 'Late arrival, rescheduled slot 09:30',
+      saved_2405: true,
+      pending_2405: false,
+      error_2405: '',
+      saved_at_2405: '',
+      name_2406: 'Rina Halim',
+      notes_2406: '',
+      saved_2406: true,
+      pending_2406: false,
+      error_2406: '',
+      saved_at_2406: '',
+      name_2407: 'Joko Susilo',
+      notes_2407: 'Reefer — set to -18C on arrival',
+      saved_2407: true,
+      pending_2407: false,
+      error_2407: '',
+      saved_at_2407: '',
+      name_2408: 'Maya Puspita',
+      notes_2408: '',
+      saved_2408: true,
+      pending_2408: false,
+      error_2408: '',
+      saved_at_2408: '',
+      name_2409: 'Hendra Gunawan',
+      notes_2409: 'Damage noted on left door',
+      saved_2409: true,
+      pending_2409: false,
+      error_2409: '',
+      saved_at_2409: '',
+      name_2410: 'Lia Kartika',
+      notes_2410: '',
+      saved_2410: true,
+      pending_2410: false,
+      error_2410: '',
+      saved_at_2410: '',
+      name_2411: 'Fajar Nugroho',
+      notes_2411: 'Waiting for driver documents',
+      saved_2411: true,
+      pending_2411: false,
+      error_2411: '',
+      saved_at_2411: '',
+      name_2412: 'Sari Wulandari',
+      notes_2412: 'Empty return — no cargo',
+      saved_2412: true,
+      pending_2412: false,
+      error_2412: '',
+      saved_at_2412: '',
+      name_2413: 'Rudi Hartono',
+      notes_2413: 'Overweight — rerouted to scale 2',
+      saved_2413: true,
+      pending_2413: false,
+      error_2413: '',
+      saved_at_2413: '',
+      name_2414: 'Indah Permata',
+      notes_2414: '',
+      saved_2414: true,
+      pending_2414: false,
+      error_2414: '',
+      saved_at_2414: '',
+    }"
+    class="flex h-full"
+  >
+    <!-- Context rail -->
+    <aside class="w-64 h-full bg-slate-900 p-4">
+      <h1 class="text-xl font-bold text-white p-2">Gate Ops</h1>
+      <p class="text-xs text-slate-500 px-2 mt-1">Port Kalibaru · Terminal 3</p>
+      <p class="text-xs text-slate-400 bg-slate-800 rounded-md px-3 py-2 mt-3 font-semibold">Transactions</p>
+      <p class="text-xs text-slate-600 px-2 mt-8">velqu-view-starter</p>
+      <p data-vv-test="store-note" class="text-xs text-slate-500 px-2 mt-2" vx-text="store_note">Dev mode — edits stay in memory (velqu-lab)</p>
+    </aside>
+
+    <!-- Transactions: summary + searchable records + detail/edit -->
+    <section data-vv-test="section-transactions" class="flex-1 p-8 h-full">
+      <header class="flex justify-between items-center">
+        <h2 class="text-2xl font-bold text-slate-900">Gate transactions</h2>
+        <div>
+          <label for="search" class="block text-xs text-slate-500 text-right">Search transactions</label>
+          <input
+            id="search"
+            data-vv-test="search"
+            vx-model="search"
+            class="vv-input mt-1 w-72 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+          >
+        </div>
+      </header>
+      <p class="text-xs text-slate-500 mt-1">Search by transaction, gate, direction, container, truck, status, or driver. Find a record, correct its driver name or notes, then save to the device.</p>
+
+      <div class="grid grid-cols-3 gap-4 mt-4">
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-xs text-slate-500">Records shown</p>
+          <p
+            data-vv-test="summary-shown"
+            class="text-3xl font-bold text-slate-900 mt-2"
+            vx-text="((search === '' || ('gt-2401 gate-in gate a tclu 4407123 b 9145 tca cleared' + name_2401.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2402 gate-in gate b mrku 8890145 b 9210 dfr cleared' + name_2402.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2403 gate-out gate a hlxu 5521038 b 8761 pkb rejected' + name_2403.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2404 gate-in gate c oolu 6639201 b 9033 mvn cleared' + name_2404.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2405 gate-in gate b tghu 1178450 b 8890 rsa pending' + name_2405.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2406 gate-out gate a csqu 3054218 b 9322 klw cleared' + name_2406.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2407 gate-in gate b eghu 2987610 b 8540 tdr pending' + name_2407.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2408 gate-in gate c gldu 7702345 b 9176 bht cleared' + name_2408.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2409 gate-out gate b beau 4159872 b 8934 gjt rejected' + name_2409.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2410 gate-in gate a segu 9305617 b 9205 cvb cleared' + name_2410.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2411 gate-in gate b triu 2014678 b 8602 nmk pending' + name_2411.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2412 gate-out gate c cmau 1480953 b 9411 plm cleared' + name_2412.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2413 gate-in gate a eitu 6847219 b 8826 hgf rejected' + name_2413.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0) + ((search === '' || ('gt-2414 gate-in gate c kktu 5093184 b 9158 qwd cleared' + name_2414.toLowerCase()).includes(search.toLowerCase())) ? 1 : 0)"
+          >14</p>
+        </div>
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-xs text-slate-500">Unsaved edits</p>
+          <p
+            data-vv-test="summary-unsaved"
+            class="text-3xl font-bold text-amber-600 mt-2"
+            vx-text="(saved_2401 ? 0 : 1) + (saved_2402 ? 0 : 1) + (saved_2403 ? 0 : 1) + (saved_2404 ? 0 : 1) + (saved_2405 ? 0 : 1) + (saved_2406 ? 0 : 1) + (saved_2407 ? 0 : 1) + (saved_2408 ? 0 : 1) + (saved_2409 ? 0 : 1) + (saved_2410 ? 0 : 1) + (saved_2411 ? 0 : 1) + (saved_2412 ? 0 : 1) + (saved_2413 ? 0 : 1) + (saved_2414 ? 0 : 1)"
+          >0</p>
+        </div>
+        <div class="bg-white rounded-lg p-4 border">
+          <p class="text-xs text-slate-500">Pending review</p>
+          <p data-vv-test="summary-pending" class="text-3xl font-bold text-slate-900 mt-2">3</p>
+        </div>
+      </div>
+
+      <div class="flex mt-6 items-start">
+        <!-- Records list (authored rows; vx-show filtering) -->
+        <div class="flex-1 h-80 overflow-y-auto bg-white rounded-lg border mr-6 p-3">
+          <div
+            id="row-gt-2401"
+            data-vv-test="row-gt-2401"
+            @click="selected = 'gt-2401'"
+            vx-show="(search === '' || ('gt-2401 gate-in gate a tclu 4407123 b 9145 tca cleared' + name_2401.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2401' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2401 · Gate A</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-gt-2402"
+            data-vv-test="row-gt-2402"
+            @click="selected = 'gt-2402'"
+            vx-show="(search === '' || ('gt-2402 gate-in gate b mrku 8890145 b 9210 dfr cleared' + name_2402.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2402' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2402 · Gate B</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-gt-2403"
+            data-vv-test="row-gt-2403"
+            @click="selected = 'gt-2403'"
+            vx-show="(search === '' || ('gt-2403 gate-out gate a hlxu 5521038 b 8761 pkb rejected' + name_2403.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2403' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2403 · Gate A</p>
+            <p class="text-xs font-bold text-red-500">REJECTED</p>
+          </div>
+          <div
+            id="row-gt-2404"
+            data-vv-test="row-gt-2404"
+            @click="selected = 'gt-2404'"
+            vx-show="(search === '' || ('gt-2404 gate-in gate c oolu 6639201 b 9033 mvn cleared' + name_2404.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2404' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2404 · Gate C</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-gt-2405"
+            data-vv-test="row-gt-2405"
+            @click="selected = 'gt-2405'"
+            vx-show="(search === '' || ('gt-2405 gate-in gate b tghu 1178450 b 8890 rsa pending' + name_2405.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2405' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2405 · Gate B</p>
+            <p class="text-xs font-bold text-amber-500">PENDING</p>
+          </div>
+          <div
+            id="row-gt-2406"
+            data-vv-test="row-gt-2406"
+            @click="selected = 'gt-2406'"
+            vx-show="(search === '' || ('gt-2406 gate-out gate a csqu 3054218 b 9322 klw cleared' + name_2406.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2406' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2406 · Gate A</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-gt-2407"
+            data-vv-test="row-gt-2407"
+            @click="selected = 'gt-2407'"
+            vx-show="(search === '' || ('gt-2407 gate-in gate b eghu 2987610 b 8540 tdr pending' + name_2407.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2407' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2407 · Gate B</p>
+            <p class="text-xs font-bold text-amber-500">PENDING</p>
+          </div>
+          <div
+            id="row-gt-2408"
+            data-vv-test="row-gt-2408"
+            @click="selected = 'gt-2408'"
+            vx-show="(search === '' || ('gt-2408 gate-in gate c gldu 7702345 b 9176 bht cleared' + name_2408.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2408' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2408 · Gate C</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-gt-2409"
+            data-vv-test="row-gt-2409"
+            @click="selected = 'gt-2409'"
+            vx-show="(search === '' || ('gt-2409 gate-out gate b beau 4159872 b 8934 gjt rejected' + name_2409.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2409' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2409 · Gate B</p>
+            <p class="text-xs font-bold text-red-500">REJECTED</p>
+          </div>
+          <div
+            id="row-gt-2410"
+            data-vv-test="row-gt-2410"
+            @click="selected = 'gt-2410'"
+            vx-show="(search === '' || ('gt-2410 gate-in gate a segu 9305617 b 9205 cvb cleared' + name_2410.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2410' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2410 · Gate A</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-gt-2411"
+            data-vv-test="row-gt-2411"
+            @click="selected = 'gt-2411'"
+            vx-show="(search === '' || ('gt-2411 gate-in gate b triu 2014678 b 8602 nmk pending' + name_2411.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2411' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2411 · Gate B</p>
+            <p class="text-xs font-bold text-amber-500">PENDING</p>
+          </div>
+          <div
+            id="row-gt-2412"
+            data-vv-test="row-gt-2412"
+            @click="selected = 'gt-2412'"
+            vx-show="(search === '' || ('gt-2412 gate-out gate c cmau 1480953 b 9411 plm cleared' + name_2412.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2412' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2412 · Gate C</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            id="row-gt-2413"
+            data-vv-test="row-gt-2413"
+            @click="selected = 'gt-2413'"
+            vx-show="(search === '' || ('gt-2413 gate-in gate a eitu 6847219 b 8826 hgf rejected' + name_2413.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2413' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2413 · Gate A</p>
+            <p class="text-xs font-bold text-red-500">REJECTED</p>
+          </div>
+          <div
+            id="row-gt-2414"
+            data-vv-test="row-gt-2414"
+            @click="selected = 'gt-2414'"
+            vx-show="(search === '' || ('gt-2414 gate-in gate c kktu 5093184 b 9158 qwd cleared' + name_2414.toLowerCase()).includes(search.toLowerCase()))"
+            :class="selected === 'gt-2414' ? 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400' : 'vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200'"
+          >
+            <p class="text-sm font-semibold text-slate-800">GT-2414 · Gate C</p>
+            <p class="text-xs font-bold text-emerald-600">CLEARED</p>
+          </div>
+          <div
+            data-vv-test="no-results"
+            vx-show="search !== '' && !((search === '' || ('gt-2401 gate-in gate a tclu 4407123 b 9145 tca cleared' + name_2401.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2402 gate-in gate b mrku 8890145 b 9210 dfr cleared' + name_2402.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2403 gate-out gate a hlxu 5521038 b 8761 pkb rejected' + name_2403.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2404 gate-in gate c oolu 6639201 b 9033 mvn cleared' + name_2404.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2405 gate-in gate b tghu 1178450 b 8890 rsa pending' + name_2405.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2406 gate-out gate a csqu 3054218 b 9322 klw cleared' + name_2406.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2407 gate-in gate b eghu 2987610 b 8540 tdr pending' + name_2407.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2408 gate-in gate c gldu 7702345 b 9176 bht cleared' + name_2408.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2409 gate-out gate b beau 4159872 b 8934 gjt rejected' + name_2409.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2410 gate-in gate a segu 9305617 b 9205 cvb cleared' + name_2410.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2411 gate-in gate b triu 2014678 b 8602 nmk pending' + name_2411.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2412 gate-out gate c cmau 1480953 b 9411 plm cleared' + name_2412.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2413 gate-in gate a eitu 6847219 b 8826 hgf rejected' + name_2413.toLowerCase()).includes(search.toLowerCase())) || (search === '' || ('gt-2414 gate-in gate c kktu 5093184 b 9158 qwd cleared' + name_2414.toLowerCase()).includes(search.toLowerCase())))"
+            class="rounded-md border border-slate-300 px-3 py-6 mt-4"
+          >
+            <p class="text-sm font-medium text-slate-500 text-center">No transactions match this search.</p>
+            <p class="text-xs text-slate-400 text-center mt-1">Clear the search box to see all fourteen records.</p>
+          </div>
+        </div>
+
+        <!-- Detail + edit panel (authored per record; read-only fields
+             first, then the two permitted editable fields) -->
+        <div class="w-96">
+          <div data-vv-test="detail-2401" vx-show="selected === 'gt-2401'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2401</p>
+            <p data-vv-test="detail-meta-2401" class="text-xs text-slate-500 mt-1">Gate-in · Gate A · 06:12 · Container TCLU 4407123</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 9145 TCA · CLEARED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2401">Driver name</label>
+            <input
+              id="edit-name-gt-2401"
+              data-vv-test="edit-name"
+              vx-model="name_2401"
+              @input="saved_2401 = false; pending_2401 = false; error_2401 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2401" vx-show="name_2401.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2401">Notes</label>
+            <textarea
+              id="edit-notes-gt-2401"
+              data-vv-test="edit-notes"
+              vx-model="notes_2401"
+              @input="saved_2401 = false; pending_2401 = false; error_2401 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2401" vx-show="notes_2401.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2401.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2401"
+              data-vv-test="save"
+              @click="pending_2401 = true"
+              :disabled="saved_2401 || pending_2401 || name_2401.trim() === '' || notes_2401.length > 280"
+              :class="saved_2401 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2401" vx-show="pending_2401" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2401" vx-show="saved_2401 && !pending_2401 && saved_at_2401 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2401 === '' ? '' : ' at ' + saved_at_2401) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2401" vx-show="error_2401 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2401"></p>
+          </div>
+          <div data-vv-test="detail-2402" vx-show="selected === 'gt-2402'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2402</p>
+            <p data-vv-test="detail-meta-2402" class="text-xs text-slate-500 mt-1">Gate-in · Gate B · 06:40 · Container MRKU 8890145</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 9210 DFR · CLEARED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2402">Driver name</label>
+            <input
+              id="edit-name-gt-2402"
+              data-vv-test="edit-name"
+              vx-model="name_2402"
+              @input="saved_2402 = false; pending_2402 = false; error_2402 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2402" vx-show="name_2402.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2402">Notes</label>
+            <textarea
+              id="edit-notes-gt-2402"
+              data-vv-test="edit-notes"
+              vx-model="notes_2402"
+              @input="saved_2402 = false; pending_2402 = false; error_2402 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2402" vx-show="notes_2402.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2402.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2402"
+              data-vv-test="save"
+              @click="pending_2402 = true"
+              :disabled="saved_2402 || pending_2402 || name_2402.trim() === '' || notes_2402.length > 280"
+              :class="saved_2402 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2402" vx-show="pending_2402" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2402" vx-show="saved_2402 && !pending_2402 && saved_at_2402 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2402 === '' ? '' : ' at ' + saved_at_2402) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2402" vx-show="error_2402 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2402"></p>
+          </div>
+          <div data-vv-test="detail-2403" vx-show="selected === 'gt-2403'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2403</p>
+            <p data-vv-test="detail-meta-2403" class="text-xs text-slate-500 mt-1">Gate-out · Gate A · 07:02 · Container HLXU 5521038 · Seal mismatch</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 8761 PKB · REJECTED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2403">Driver name</label>
+            <input
+              id="edit-name-gt-2403"
+              data-vv-test="edit-name"
+              vx-model="name_2403"
+              @input="saved_2403 = false; pending_2403 = false; error_2403 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2403" vx-show="name_2403.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2403">Notes</label>
+            <textarea
+              id="edit-notes-gt-2403"
+              data-vv-test="edit-notes"
+              vx-model="notes_2403"
+              @input="saved_2403 = false; pending_2403 = false; error_2403 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2403" vx-show="notes_2403.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2403.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2403"
+              data-vv-test="save"
+              @click="pending_2403 = true"
+              :disabled="saved_2403 || pending_2403 || name_2403.trim() === '' || notes_2403.length > 280"
+              :class="saved_2403 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2403" vx-show="pending_2403" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2403" vx-show="saved_2403 && !pending_2403 && saved_at_2403 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2403 === '' ? '' : ' at ' + saved_at_2403) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2403" vx-show="error_2403 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2403"></p>
+          </div>
+          <div data-vv-test="detail-2404" vx-show="selected === 'gt-2404'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2404</p>
+            <p data-vv-test="detail-meta-2404" class="text-xs text-slate-500 mt-1">Gate-in · Gate C · 07:15 · Container OOLU 6639201 · Reefer cargo</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 9033 MVN · CLEARED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2404">Driver name</label>
+            <input
+              id="edit-name-gt-2404"
+              data-vv-test="edit-name"
+              vx-model="name_2404"
+              @input="saved_2404 = false; pending_2404 = false; error_2404 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2404" vx-show="name_2404.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2404">Notes</label>
+            <textarea
+              id="edit-notes-gt-2404"
+              data-vv-test="edit-notes"
+              vx-model="notes_2404"
+              @input="saved_2404 = false; pending_2404 = false; error_2404 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2404" vx-show="notes_2404.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2404.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2404"
+              data-vv-test="save"
+              @click="pending_2404 = true"
+              :disabled="saved_2404 || pending_2404 || name_2404.trim() === '' || notes_2404.length > 280"
+              :class="saved_2404 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2404" vx-show="pending_2404" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2404" vx-show="saved_2404 && !pending_2404 && saved_at_2404 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2404 === '' ? '' : ' at ' + saved_at_2404) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2404" vx-show="error_2404 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2404"></p>
+          </div>
+          <div data-vv-test="detail-2405" vx-show="selected === 'gt-2405'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2405</p>
+            <p data-vv-test="detail-meta-2405" class="text-xs text-slate-500 mt-1">Gate-in · Gate B · 07:48 · Container TGHU 1178450 · Slot 09:30</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 8890 RSA · PENDING</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2405">Driver name</label>
+            <input
+              id="edit-name-gt-2405"
+              data-vv-test="edit-name"
+              vx-model="name_2405"
+              @input="saved_2405 = false; pending_2405 = false; error_2405 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2405" vx-show="name_2405.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2405">Notes</label>
+            <textarea
+              id="edit-notes-gt-2405"
+              data-vv-test="edit-notes"
+              vx-model="notes_2405"
+              @input="saved_2405 = false; pending_2405 = false; error_2405 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2405" vx-show="notes_2405.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2405.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2405"
+              data-vv-test="save"
+              @click="pending_2405 = true"
+              :disabled="saved_2405 || pending_2405 || name_2405.trim() === '' || notes_2405.length > 280"
+              :class="saved_2405 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2405" vx-show="pending_2405" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2405" vx-show="saved_2405 && !pending_2405 && saved_at_2405 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2405 === '' ? '' : ' at ' + saved_at_2405) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2405" vx-show="error_2405 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2405"></p>
+          </div>
+          <div data-vv-test="detail-2406" vx-show="selected === 'gt-2406'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2406</p>
+            <p data-vv-test="detail-meta-2406" class="text-xs text-slate-500 mt-1">Gate-out · Gate A · 08:05 · Container CSQU 3054218</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 9322 KLW · CLEARED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2406">Driver name</label>
+            <input
+              id="edit-name-gt-2406"
+              data-vv-test="edit-name"
+              vx-model="name_2406"
+              @input="saved_2406 = false; pending_2406 = false; error_2406 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2406" vx-show="name_2406.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2406">Notes</label>
+            <textarea
+              id="edit-notes-gt-2406"
+              data-vv-test="edit-notes"
+              vx-model="notes_2406"
+              @input="saved_2406 = false; pending_2406 = false; error_2406 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2406" vx-show="notes_2406.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2406.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2406"
+              data-vv-test="save"
+              @click="pending_2406 = true"
+              :disabled="saved_2406 || pending_2406 || name_2406.trim() === '' || notes_2406.length > 280"
+              :class="saved_2406 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2406" vx-show="pending_2406" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2406" vx-show="saved_2406 && !pending_2406 && saved_at_2406 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2406 === '' ? '' : ' at ' + saved_at_2406) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2406" vx-show="error_2406 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2406"></p>
+          </div>
+          <div data-vv-test="detail-2407" vx-show="selected === 'gt-2407'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2407</p>
+            <p data-vv-test="detail-meta-2407" class="text-xs text-slate-500 mt-1">Gate-in · Gate B · 08:22 · Container EGHU 2987610 · Reefer</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 8540 TDR · PENDING</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2407">Driver name</label>
+            <input
+              id="edit-name-gt-2407"
+              data-vv-test="edit-name"
+              vx-model="name_2407"
+              @input="saved_2407 = false; pending_2407 = false; error_2407 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2407" vx-show="name_2407.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2407">Notes</label>
+            <textarea
+              id="edit-notes-gt-2407"
+              data-vv-test="edit-notes"
+              vx-model="notes_2407"
+              @input="saved_2407 = false; pending_2407 = false; error_2407 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2407" vx-show="notes_2407.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2407.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2407"
+              data-vv-test="save"
+              @click="pending_2407 = true"
+              :disabled="saved_2407 || pending_2407 || name_2407.trim() === '' || notes_2407.length > 280"
+              :class="saved_2407 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2407" vx-show="pending_2407" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2407" vx-show="saved_2407 && !pending_2407 && saved_at_2407 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2407 === '' ? '' : ' at ' + saved_at_2407) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2407" vx-show="error_2407 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2407"></p>
+          </div>
+          <div data-vv-test="detail-2408" vx-show="selected === 'gt-2408'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2408</p>
+            <p data-vv-test="detail-meta-2408" class="text-xs text-slate-500 mt-1">Gate-in · Gate C · 08:41 · Container GLDU 7702345</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 9176 BHT · CLEARED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2408">Driver name</label>
+            <input
+              id="edit-name-gt-2408"
+              data-vv-test="edit-name"
+              vx-model="name_2408"
+              @input="saved_2408 = false; pending_2408 = false; error_2408 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2408" vx-show="name_2408.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2408">Notes</label>
+            <textarea
+              id="edit-notes-gt-2408"
+              data-vv-test="edit-notes"
+              vx-model="notes_2408"
+              @input="saved_2408 = false; pending_2408 = false; error_2408 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2408" vx-show="notes_2408.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2408.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2408"
+              data-vv-test="save"
+              @click="pending_2408 = true"
+              :disabled="saved_2408 || pending_2408 || name_2408.trim() === '' || notes_2408.length > 280"
+              :class="saved_2408 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2408" vx-show="pending_2408" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2408" vx-show="saved_2408 && !pending_2408 && saved_at_2408 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2408 === '' ? '' : ' at ' + saved_at_2408) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2408" vx-show="error_2408 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2408"></p>
+          </div>
+          <div data-vv-test="detail-2409" vx-show="selected === 'gt-2409'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2409</p>
+            <p data-vv-test="detail-meta-2409" class="text-xs text-slate-500 mt-1">Gate-out · Gate B · 09:03 · Container BEAU 4159872 · Damage on left door</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 8934 GJT · REJECTED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2409">Driver name</label>
+            <input
+              id="edit-name-gt-2409"
+              data-vv-test="edit-name"
+              vx-model="name_2409"
+              @input="saved_2409 = false; pending_2409 = false; error_2409 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2409" vx-show="name_2409.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2409">Notes</label>
+            <textarea
+              id="edit-notes-gt-2409"
+              data-vv-test="edit-notes"
+              vx-model="notes_2409"
+              @input="saved_2409 = false; pending_2409 = false; error_2409 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2409" vx-show="notes_2409.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2409.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2409"
+              data-vv-test="save"
+              @click="pending_2409 = true"
+              :disabled="saved_2409 || pending_2409 || name_2409.trim() === '' || notes_2409.length > 280"
+              :class="saved_2409 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2409" vx-show="pending_2409" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2409" vx-show="saved_2409 && !pending_2409 && saved_at_2409 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2409 === '' ? '' : ' at ' + saved_at_2409) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2409" vx-show="error_2409 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2409"></p>
+          </div>
+          <div data-vv-test="detail-2410" vx-show="selected === 'gt-2410'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2410</p>
+            <p data-vv-test="detail-meta-2410" class="text-xs text-slate-500 mt-1">Gate-in · Gate A · 09:27 · Container SEGU 9305617</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 9205 CVB · CLEARED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2410">Driver name</label>
+            <input
+              id="edit-name-gt-2410"
+              data-vv-test="edit-name"
+              vx-model="name_2410"
+              @input="saved_2410 = false; pending_2410 = false; error_2410 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2410" vx-show="name_2410.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2410">Notes</label>
+            <textarea
+              id="edit-notes-gt-2410"
+              data-vv-test="edit-notes"
+              vx-model="notes_2410"
+              @input="saved_2410 = false; pending_2410 = false; error_2410 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2410" vx-show="notes_2410.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2410.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2410"
+              data-vv-test="save"
+              @click="pending_2410 = true"
+              :disabled="saved_2410 || pending_2410 || name_2410.trim() === '' || notes_2410.length > 280"
+              :class="saved_2410 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2410" vx-show="pending_2410" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2410" vx-show="saved_2410 && !pending_2410 && saved_at_2410 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2410 === '' ? '' : ' at ' + saved_at_2410) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2410" vx-show="error_2410 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2410"></p>
+          </div>
+          <div data-vv-test="detail-2411" vx-show="selected === 'gt-2411'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2411</p>
+            <p data-vv-test="detail-meta-2411" class="text-xs text-slate-500 mt-1">Gate-in · Gate B · 09:52 · Container TRIU 2014678 · Documents pending</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 8602 NMK · PENDING</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2411">Driver name</label>
+            <input
+              id="edit-name-gt-2411"
+              data-vv-test="edit-name"
+              vx-model="name_2411"
+              @input="saved_2411 = false; pending_2411 = false; error_2411 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2411" vx-show="name_2411.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2411">Notes</label>
+            <textarea
+              id="edit-notes-gt-2411"
+              data-vv-test="edit-notes"
+              vx-model="notes_2411"
+              @input="saved_2411 = false; pending_2411 = false; error_2411 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2411" vx-show="notes_2411.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2411.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2411"
+              data-vv-test="save"
+              @click="pending_2411 = true"
+              :disabled="saved_2411 || pending_2411 || name_2411.trim() === '' || notes_2411.length > 280"
+              :class="saved_2411 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2411" vx-show="pending_2411" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2411" vx-show="saved_2411 && !pending_2411 && saved_at_2411 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2411 === '' ? '' : ' at ' + saved_at_2411) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2411" vx-show="error_2411 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2411"></p>
+          </div>
+          <div data-vv-test="detail-2412" vx-show="selected === 'gt-2412'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2412</p>
+            <p data-vv-test="detail-meta-2412" class="text-xs text-slate-500 mt-1">Gate-out · Gate C · 10:14 · Container CMAU 1480953 · Empty return</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 9411 PLM · CLEARED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2412">Driver name</label>
+            <input
+              id="edit-name-gt-2412"
+              data-vv-test="edit-name"
+              vx-model="name_2412"
+              @input="saved_2412 = false; pending_2412 = false; error_2412 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2412" vx-show="name_2412.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2412">Notes</label>
+            <textarea
+              id="edit-notes-gt-2412"
+              data-vv-test="edit-notes"
+              vx-model="notes_2412"
+              @input="saved_2412 = false; pending_2412 = false; error_2412 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2412" vx-show="notes_2412.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2412.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2412"
+              data-vv-test="save"
+              @click="pending_2412 = true"
+              :disabled="saved_2412 || pending_2412 || name_2412.trim() === '' || notes_2412.length > 280"
+              :class="saved_2412 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2412" vx-show="pending_2412" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2412" vx-show="saved_2412 && !pending_2412 && saved_at_2412 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2412 === '' ? '' : ' at ' + saved_at_2412) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2412" vx-show="error_2412 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2412"></p>
+          </div>
+          <div data-vv-test="detail-2413" vx-show="selected === 'gt-2413'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2413</p>
+            <p data-vv-test="detail-meta-2413" class="text-xs text-slate-500 mt-1">Gate-in · Gate A · 10:38 · Container EITU 6847219 · Overweight</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 8826 HGF · REJECTED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2413">Driver name</label>
+            <input
+              id="edit-name-gt-2413"
+              data-vv-test="edit-name"
+              vx-model="name_2413"
+              @input="saved_2413 = false; pending_2413 = false; error_2413 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2413" vx-show="name_2413.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2413">Notes</label>
+            <textarea
+              id="edit-notes-gt-2413"
+              data-vv-test="edit-notes"
+              vx-model="notes_2413"
+              @input="saved_2413 = false; pending_2413 = false; error_2413 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2413" vx-show="notes_2413.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2413.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2413"
+              data-vv-test="save"
+              @click="pending_2413 = true"
+              :disabled="saved_2413 || pending_2413 || name_2413.trim() === '' || notes_2413.length > 280"
+              :class="saved_2413 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2413" vx-show="pending_2413" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2413" vx-show="saved_2413 && !pending_2413 && saved_at_2413 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2413 === '' ? '' : ' at ' + saved_at_2413) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2413" vx-show="error_2413 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2413"></p>
+          </div>
+          <div data-vv-test="detail-2414" vx-show="selected === 'gt-2414'" class="bg-white rounded-lg border p-4">
+            <p class="text-lg font-bold text-slate-900">GT-2414</p>
+            <p data-vv-test="detail-meta-2414" class="text-xs text-slate-500 mt-1">Gate-in · Gate C · 11:02 · Container KKTU 5093184</p>
+            <p class="text-xs text-slate-500 mt-1">Truck B 9158 QWD · CLEARED</p>
+            <label class="mt-4 block text-xs text-slate-500" for="edit-name-gt-2414">Driver name</label>
+            <input
+              id="edit-name-gt-2414"
+              data-vv-test="edit-name"
+              vx-model="name_2414"
+              @input="saved_2414 = false; pending_2414 = false; error_2414 = ''"
+              class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            >
+            <p data-vv-test="name-error-2414" vx-show="name_2414.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2414">Notes</label>
+            <textarea
+              id="edit-notes-gt-2414"
+              data-vv-test="edit-notes"
+              vx-model="notes_2414"
+              @input="saved_2414 = false; pending_2414 = false; error_2414 = ''"
+              class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
+            ></textarea>
+            <p data-vv-test="notes-error-2414" vx-show="notes_2414.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2414.length + ').'">Notes must be 280 characters or fewer.</p>
+            <button
+              id="save-gt-2414"
+              data-vv-test="save"
+              @click="pending_2414 = true"
+              :disabled="saved_2414 || pending_2414 || name_2414.trim() === '' || notes_2414.length > 280"
+              :class="saved_2414 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
+            >Save to device</button>
+            <p data-vv-test="pending-2414" vx-show="pending_2414" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
+            <p data-vv-test="saved-2414" vx-show="saved_2414 && !pending_2414 && saved_at_2414 !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_2414 === '' ? '' : ' at ' + saved_at_2414) + ' — survives restart.'">Saved to device — survives restart.</p>
+            <p data-vv-test="save-error-2414" vx-show="error_2414 !== ''" class="mt-2 text-xs text-red-600" vx-text="error_2414"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
+
+<!-- probe-b 1789947482468344684 -->
