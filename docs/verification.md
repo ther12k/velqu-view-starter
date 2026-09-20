@@ -135,3 +135,34 @@ future framework slice, per the external-consumer contract.
 - The embedded fallback equals the on-disk assets as of the build;
   editing files requires a rebuild only when no `app/` directory is
   found.
+
+## 5. Resolution (2026-09-20): defect repaired, dev tool repinned
+
+The §3 defect was repaired in the framework as **post-closure
+correction 0001** (commit `3c1ee343a71117984204c04be49c4536604e91b8`,
+CI green; `docs/evidence/post-closure-watch-scheduling.md` there). The
+repair separates relevant filesystem notifications (which move the
+debounce deadline) from deadline wakes (which only check it), adds a
+bounded re-armable scheduler inside velqu-lab, and is gated by a live
+single-save/no-input regression that fails on `1d0a562` and passes on
+the repair (native and polling backends), plus burst, unregistered
+noise, rejected-then-repair, and shutdown-with-pending-timer
+scenarios. X11 verified; Wayland lane unavailable on this machine.
+
+Consequences for this starter:
+
+- `dev.sh` now pins the **dev-tool revision**
+  `3c1ee343a71117984204c04be49c4536604e91b8`, installs with
+  `--locked` into `~/.velqu-tools/<full-sha>` (one install per
+  revision — a stale velqu-lab elsewhere on PATH can never be
+  picked up), and runs with `--watch`: hot reload works — one save,
+  no restart.
+- The **runtime revision stays `1d0a562…`** (Cargo.toml/Cargo.lock
+  unchanged): the repair touched only the lab. `cargo test` still
+  pins the accepted M7 baseline digest.
+
+Verified through this starter's own `dev.sh`: window opened with
+`--watch`, one save to `app.css` with no further input, the window
+reconciled on its own (`watch: reconciled kind=Stylesheets
+generation=None`), clean exit. The startup rescan pass counted as one
+unchanged-skip reconciliation, exactly as designed.

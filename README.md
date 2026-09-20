@@ -6,11 +6,12 @@ No framework checkout, no engine internals — this repository is the
 external-consumer check: another developer can clone it, build it,
 edit the HTML/Tailwind UI, and run it.
 
-**Pinned baseline:** VelquView @ `1d0a562bccdcb21c657423ca8b568cc2beebff88`
-(short id `1d0a562` — the Phase-1 closure record's amendment commit;
-see `docs/evidence/phase1-closure.md` in the framework repository).
-Git dependencies are pinned by full SHA in `Cargo.toml`, and the
-committed `Cargo.lock` pins the entire dependency tree.
+**Pinned revisions** (recorded separately; neither upgrades silently):
+
+| What | Revision | Pinned where |
+| --- | --- | --- |
+| Runtime (`velqu-view`, `velqu-shell` crates) | `1d0a562bccdcb21c657423ca8b568cc2beebff88` — the Phase-1 closure record's amendment commit (`docs/evidence/phase1-closure.md` in the framework repo) | `rev = …` in `Cargo.toml` + committed `Cargo.lock` |
+| Development tool (`velqu-lab` binary) | `3c1ee343a71117984204c04be49c4536604e91b8` — "post-closure correction 0001", which repaired live-window watch scheduling | `dev.sh` (installs `--locked` into `~/.velqu-tools/<full-sha>`) |
 
 ## Prerequisites
 
@@ -29,15 +30,18 @@ committed `Cargo.lock` pins the entire dependency tree.
 ./dev.sh        # window + Tailwind + Velqu Reactive over ./app
 ```
 
-One-time cost: `dev.sh` installs `velqu-lab` (the framework's
-development host) from the same pinned revision. Extra flags pass
-through, e.g. `./dev.sh --exit-after-ms 5000`.
+One-time cost per revision: `dev.sh` installs `velqu-lab` (the
+framework's development host) into a revision-specific directory,
+with `--locked`, from the dev-tool revision above. Extra flags pass
+through, e.g. `./dev.sh --exit-after-ms 5000` or
+`./dev.sh --watch=poll`.
 
-**Hot reload is disabled at this revision.** `velqu-lab --watch`
-never reconciles live (a debounce-clock defect in the dev host — full
-diagnosis and proposed fix in
-[docs/verification.md](docs/verification.md)). The dev loop is:
-edit, close the window with `Esc`, rerun `./dev.sh`.
+**Hot reload works**: save a file under `./app` and the window
+reconciles on its own — one save, no restart, no extra input. This
+required the framework repair in the dev-tool revision above; at the
+older `1d0a562` tool the window never reconciled by itself (found by
+this starter — see
+[docs/verification.md](docs/verification.md)).
 
 Headless inspection (snapshot + retained trace) and capture:
 
@@ -101,5 +105,6 @@ finding — see the verification report.
   container (`overflow-auto`) with `flex-1` measures as `0px` flex
   basis rather than content height inside auto-height parents —
   recorded as a compatibility deviation in the Phase-1 closure record.
-- **Hot reload (`--watch`) is defective** at this revision — see the
-  verification report.
+- **Hot reload** works via the dev-tool revision pinned in `dev.sh`
+  (framework post-closure correction 0001); the runtime crates at
+  `1d0a562` are unaffected by it.

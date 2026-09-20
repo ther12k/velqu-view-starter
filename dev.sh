@@ -2,37 +2,39 @@
 # Development command for velqu-view-starter.
 #
 # Uses velqu-lab — VelquView's development host — installed from the
-# SAME pinned revision the application builds against, so the tooling
-# and the runtime can never drift apart. One-time install; afterwards
-# this opens the dashboard in a window with Tailwind compilation and
-# Velqu Reactive over ./app.
+# pinned DEV-TOOL revision below into a revision-specific directory
+# (so "a binary named velqu-lab already exists" can never silently
+# mean the wrong revision), with --locked so the dependency
+# resolution of the pinned tool revision is retained. This opens the
+# dashboard in a window with Tailwind compilation, Velqu Reactive,
+# and hot reload over ./app: save a file and the window reconciles
+# on its own — no restart, no second save.
 #
-# HOT RELOAD IS DISABLED AT THIS REVISION. velqu-lab's --watch never
-# reconciles live: the debounce clock restarts on every wakeup while
-# the startup rescan keeps the dirty set non-empty, so the 120ms quiet
-# interval can never elapse inside a waiting event loop. See
-# docs/verification.md ("Live hot reload defect") for the full
-# diagnosis and the proposed fix. Until it lands, the dev loop is:
-# edit, close the window (Esc), rerun ./dev.sh.
+# Hot reload works as of dev-tool revision 3c1ee34 ("post-closure
+# correction 0001"), which repaired live-window watch scheduling;
+# at the older 1d0a562 tool the window never reconciled by itself.
 #
 # Extra velqu-lab flags pass through, e.g.:
-#   ./dev.sh --watch=poll          try the watcher anyway (after the fix)
+#   ./dev.sh --watch=poll        polling watcher (no inotify)
 #   ./dev.sh --exit-after-ms 5000
 #
 # Inspection (headless only): velqu-lab prints the inspector snapshot
 # and trace with --inspect, e.g.
-#   velqu-lab --headless --inspect --tailwind --reactive ./app
+#   "$TOOL_ROOT/bin/velqu-lab" --headless --inspect --tailwind --reactive ./app
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 REPO="https://github.com/ther12k/velqu-view.git"
-# Keep in lockstep with the pinned revision in Cargo.toml.
-REV="1d0a562bccdcb21c657423ca8b568cc2beebff88"
+# DEV-TOOL revision (keep in lockstep with README.md's revision table;
+# the app's RUNTIME revision is pinned separately in Cargo.toml).
+REV="3c1ee343a71117984204c04be49c4536604e91b8"
+TOOL_ROOT="$HOME/.velqu-tools/$REV"
+LAB="$TOOL_ROOT/bin/velqu-lab"
 
-if ! command -v velqu-lab >/dev/null 2>&1; then
-  echo "dev: velqu-lab not found — installing the VelquView dev host at rev ${REV:0:7}"
-  echo "dev: (one-time; compiles the framework, takes a few minutes)"
-  cargo install --git "$REPO" --rev "$REV" velqu-lab
+if [ ! -x "$LAB" ]; then
+  echo "dev: velqu-lab ${REV:0:7} not installed — building into $TOOL_ROOT"
+  echo "dev: (one-time per revision; compiles the framework, takes a few minutes)"
+  cargo install --locked --git "$REPO" --rev "$REV" --root "$TOOL_ROOT" velqu-lab
 fi
 
-exec velqu-lab --tailwind --reactive "$here/app" "$@"
+exec "$LAB" --tailwind --reactive --watch "$here/app" "$@"
