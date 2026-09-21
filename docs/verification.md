@@ -290,3 +290,44 @@ under a sustained edit loop on the ops app as well.
 - Layout-facts `text_runs` join without inter-run spacing, so
   multi-word assertions in public-API tests must normalize whitespace
   (the rendered rasters are correct — verified visually).
+
+### 6.4 Hardening acceptance boundaries (2026-09-21, commit `821e7e3`)
+
+The persistence/input hardening (durability sequence, single-writer
+flock, corrupt-store preservation, Unicode/entity round-trip) was
+accepted by review on the supplied evidence — not an independent
+source-level sign-off. Three boundaries stay attached to that
+acceptance:
+
+1. **Durability is an implemented protocol, not a hardware
+   qualification.** Saves follow write → flush → file sync → rename →
+   directory sync, with success acknowledged only after the rename
+   lands. Once the rename succeeds the new store owns the pathname, so
+   a later failure is never reported as "not saved"; a failed
+   directory sync after a successful rename is surfaced as a loud
+   warning that the save may not survive sudden power loss. This is
+   the documented Linux local-filesystem sequence — it has not been
+   power-loss tested on deployment hardware.
+2. **Single writer is application coordination, not access control.**
+   The `.lock` flock is advisory: cooperating instances (this
+   application, `--smoke-save`, `--print-record`) are serialized;
+   arbitrary processes with sufficient permissions can still write
+   `records.json` directly. That matches this pilot's single-writer
+   requirement; no database or multiwriter architecture follows from
+   a JSON store.
+3. **Length limits count Unicode scalar values, not graphemes.** The
+   UI's `Array.from(s).length` and the host's `s.chars().count()` agree
+   on scalar values at the 80/81 and 280/281 boundaries (including
+   supplementary-plane characters). A base letter plus a combining
+   accent consumes two scalar values while rendering as one visual
+   character; this is a stated policy, not a text-layout defect.
+
+Disposition recorded with the acceptance: application feature scope is
+**frozen for the pilot**; the framework and its Phase-1 scope are
+unchanged; X11 results do not establish Wayland behavior; live IME
+remains platform-specific evidence; the bounded memory plateau is not
+an indefinite-duration leak-free claim. The named next step is
+**supervised operator acceptance** against this pinned build with a
+backed-up pilot dataset — an operator completing the real correction
+workflow and distinguishing a successful save, a rejected edit, and a
+post-save presentation problem.
