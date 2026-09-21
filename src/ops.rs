@@ -449,8 +449,20 @@ impl RecordStore {
 
         std::fs::rename(&tmp, &self.path)?;
 
-        if let Ok(dir) = File::open(&self.data_dir) {
-            let _ = dir.sync_all();
+        // The rename already made the new store own the pathname, so a
+        // failure from here on must NOT be reported as "not saved" —
+        // the write stands. But the directory entry's durability
+        // across power loss is only established by this sync, so a
+        // failure is surfaced loudly rather than swallowed.
+        match File::open(&self.data_dir).and_then(|dir| dir.sync_all()) {
+            Ok(()) => {}
+            Err(error) => {
+                eprintln!(
+                    "ops: WARNING — {} is saved, but syncing its directory failed ({error}); \
+                     the save may not survive a sudden power loss",
+                    self.path.display()
+                );
+            }
         }
 
         Ok(())
