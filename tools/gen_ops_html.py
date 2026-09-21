@@ -132,7 +132,7 @@ def details_html() -> str:
               @input="saved_{r.suffix} = false; pending_{r.suffix} = false; error_{r.suffix} = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-{r.suffix}" vx-show="name_{r.suffix}.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-{r.suffix}" vx-show="name_{r.suffix}.trim() === '' || Array.from(name_{r.suffix}.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-{r.suffix}">Notes</label>
             <textarea
               id="edit-notes-gt-{r.suffix}"
@@ -141,12 +141,12 @@ def details_html() -> str:
               @input="saved_{r.suffix} = false; pending_{r.suffix} = false; error_{r.suffix} = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-{r.suffix}" vx-show="notes_{r.suffix}.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_{r.suffix}.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-{r.suffix}" vx-show="Array.from(notes_{r.suffix}).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_{r.suffix}).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-{r.suffix}"
               data-vv-test="save"
               @click="pending_{r.suffix} = true"
-              :disabled="saved_{r.suffix} || pending_{r.suffix} || name_{r.suffix}.trim() === '' || notes_{r.suffix}.length > 280"
+              :disabled="saved_{r.suffix} || pending_{r.suffix} || name_{r.suffix}.trim() === '' || Array.from(name_{r.suffix}.trim()).length > 80 || Array.from(notes_{r.suffix}).length > 280"
               :class="saved_{r.suffix} ? '{BTN_SAVED}' : '{BTN_ACTIVE}'"
             >Save to device</button>
             <p data-vv-test="pending-{r.suffix}" vx-show="pending_{r.suffix}" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>

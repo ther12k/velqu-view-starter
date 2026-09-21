@@ -2307,6 +2307,7 @@ version = "0.1.0"
 dependencies = [
  "arboard",
  "notify",
+ "rustix 0.38.44",
  "serde",
  "serde_json",
  "softbuffer",

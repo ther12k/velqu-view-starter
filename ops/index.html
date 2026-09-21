@@ -324,7 +324,7 @@
               @input="saved_2401 = false; pending_2401 = false; error_2401 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2401" vx-show="name_2401.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2401" vx-show="name_2401.trim() === '' || Array.from(name_2401.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2401">Notes</label>
             <textarea
               id="edit-notes-gt-2401"
@@ -333,12 +333,12 @@
               @input="saved_2401 = false; pending_2401 = false; error_2401 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2401" vx-show="notes_2401.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2401.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2401" vx-show="Array.from(notes_2401).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2401).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2401"
               data-vv-test="save"
               @click="pending_2401 = true"
-              :disabled="saved_2401 || pending_2401 || name_2401.trim() === '' || notes_2401.length > 280"
+              :disabled="saved_2401 || pending_2401 || name_2401.trim() === '' || Array.from(name_2401.trim()).length > 80 || Array.from(notes_2401).length > 280"
               :class="saved_2401 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2401" vx-show="pending_2401" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -357,7 +357,7 @@
               @input="saved_2402 = false; pending_2402 = false; error_2402 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2402" vx-show="name_2402.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2402" vx-show="name_2402.trim() === '' || Array.from(name_2402.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2402">Notes</label>
             <textarea
               id="edit-notes-gt-2402"
@@ -366,12 +366,12 @@
               @input="saved_2402 = false; pending_2402 = false; error_2402 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2402" vx-show="notes_2402.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2402.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2402" vx-show="Array.from(notes_2402).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2402).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2402"
               data-vv-test="save"
               @click="pending_2402 = true"
-              :disabled="saved_2402 || pending_2402 || name_2402.trim() === '' || notes_2402.length > 280"
+              :disabled="saved_2402 || pending_2402 || name_2402.trim() === '' || Array.from(name_2402.trim()).length > 80 || Array.from(notes_2402).length > 280"
               :class="saved_2402 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2402" vx-show="pending_2402" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -390,7 +390,7 @@
               @input="saved_2403 = false; pending_2403 = false; error_2403 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2403" vx-show="name_2403.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2403" vx-show="name_2403.trim() === '' || Array.from(name_2403.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2403">Notes</label>
             <textarea
               id="edit-notes-gt-2403"
@@ -399,12 +399,12 @@
               @input="saved_2403 = false; pending_2403 = false; error_2403 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2403" vx-show="notes_2403.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2403.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2403" vx-show="Array.from(notes_2403).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2403).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2403"
               data-vv-test="save"
               @click="pending_2403 = true"
-              :disabled="saved_2403 || pending_2403 || name_2403.trim() === '' || notes_2403.length > 280"
+              :disabled="saved_2403 || pending_2403 || name_2403.trim() === '' || Array.from(name_2403.trim()).length > 80 || Array.from(notes_2403).length > 280"
               :class="saved_2403 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2403" vx-show="pending_2403" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -423,7 +423,7 @@
               @input="saved_2404 = false; pending_2404 = false; error_2404 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2404" vx-show="name_2404.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2404" vx-show="name_2404.trim() === '' || Array.from(name_2404.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2404">Notes</label>
             <textarea
               id="edit-notes-gt-2404"
@@ -432,12 +432,12 @@
               @input="saved_2404 = false; pending_2404 = false; error_2404 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2404" vx-show="notes_2404.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2404.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2404" vx-show="Array.from(notes_2404).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2404).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2404"
               data-vv-test="save"
               @click="pending_2404 = true"
-              :disabled="saved_2404 || pending_2404 || name_2404.trim() === '' || notes_2404.length > 280"
+              :disabled="saved_2404 || pending_2404 || name_2404.trim() === '' || Array.from(name_2404.trim()).length > 80 || Array.from(notes_2404).length > 280"
               :class="saved_2404 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2404" vx-show="pending_2404" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -456,7 +456,7 @@
               @input="saved_2405 = false; pending_2405 = false; error_2405 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2405" vx-show="name_2405.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2405" vx-show="name_2405.trim() === '' || Array.from(name_2405.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2405">Notes</label>
             <textarea
               id="edit-notes-gt-2405"
@@ -465,12 +465,12 @@
               @input="saved_2405 = false; pending_2405 = false; error_2405 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2405" vx-show="notes_2405.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2405.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2405" vx-show="Array.from(notes_2405).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2405).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2405"
               data-vv-test="save"
               @click="pending_2405 = true"
-              :disabled="saved_2405 || pending_2405 || name_2405.trim() === '' || notes_2405.length > 280"
+              :disabled="saved_2405 || pending_2405 || name_2405.trim() === '' || Array.from(name_2405.trim()).length > 80 || Array.from(notes_2405).length > 280"
               :class="saved_2405 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2405" vx-show="pending_2405" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -489,7 +489,7 @@
               @input="saved_2406 = false; pending_2406 = false; error_2406 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2406" vx-show="name_2406.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2406" vx-show="name_2406.trim() === '' || Array.from(name_2406.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2406">Notes</label>
             <textarea
               id="edit-notes-gt-2406"
@@ -498,12 +498,12 @@
               @input="saved_2406 = false; pending_2406 = false; error_2406 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2406" vx-show="notes_2406.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2406.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2406" vx-show="Array.from(notes_2406).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2406).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2406"
               data-vv-test="save"
               @click="pending_2406 = true"
-              :disabled="saved_2406 || pending_2406 || name_2406.trim() === '' || notes_2406.length > 280"
+              :disabled="saved_2406 || pending_2406 || name_2406.trim() === '' || Array.from(name_2406.trim()).length > 80 || Array.from(notes_2406).length > 280"
               :class="saved_2406 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2406" vx-show="pending_2406" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -522,7 +522,7 @@
               @input="saved_2407 = false; pending_2407 = false; error_2407 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2407" vx-show="name_2407.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2407" vx-show="name_2407.trim() === '' || Array.from(name_2407.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2407">Notes</label>
             <textarea
               id="edit-notes-gt-2407"
@@ -531,12 +531,12 @@
               @input="saved_2407 = false; pending_2407 = false; error_2407 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2407" vx-show="notes_2407.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2407.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2407" vx-show="Array.from(notes_2407).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2407).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2407"
               data-vv-test="save"
               @click="pending_2407 = true"
-              :disabled="saved_2407 || pending_2407 || name_2407.trim() === '' || notes_2407.length > 280"
+              :disabled="saved_2407 || pending_2407 || name_2407.trim() === '' || Array.from(name_2407.trim()).length > 80 || Array.from(notes_2407).length > 280"
               :class="saved_2407 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2407" vx-show="pending_2407" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -555,7 +555,7 @@
               @input="saved_2408 = false; pending_2408 = false; error_2408 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2408" vx-show="name_2408.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2408" vx-show="name_2408.trim() === '' || Array.from(name_2408.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2408">Notes</label>
             <textarea
               id="edit-notes-gt-2408"
@@ -564,12 +564,12 @@
               @input="saved_2408 = false; pending_2408 = false; error_2408 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2408" vx-show="notes_2408.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2408.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2408" vx-show="Array.from(notes_2408).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2408).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2408"
               data-vv-test="save"
               @click="pending_2408 = true"
-              :disabled="saved_2408 || pending_2408 || name_2408.trim() === '' || notes_2408.length > 280"
+              :disabled="saved_2408 || pending_2408 || name_2408.trim() === '' || Array.from(name_2408.trim()).length > 80 || Array.from(notes_2408).length > 280"
               :class="saved_2408 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2408" vx-show="pending_2408" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -588,7 +588,7 @@
               @input="saved_2409 = false; pending_2409 = false; error_2409 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2409" vx-show="name_2409.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2409" vx-show="name_2409.trim() === '' || Array.from(name_2409.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2409">Notes</label>
             <textarea
               id="edit-notes-gt-2409"
@@ -597,12 +597,12 @@
               @input="saved_2409 = false; pending_2409 = false; error_2409 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2409" vx-show="notes_2409.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2409.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2409" vx-show="Array.from(notes_2409).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2409).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2409"
               data-vv-test="save"
               @click="pending_2409 = true"
-              :disabled="saved_2409 || pending_2409 || name_2409.trim() === '' || notes_2409.length > 280"
+              :disabled="saved_2409 || pending_2409 || name_2409.trim() === '' || Array.from(name_2409.trim()).length > 80 || Array.from(notes_2409).length > 280"
               :class="saved_2409 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2409" vx-show="pending_2409" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -621,7 +621,7 @@
               @input="saved_2410 = false; pending_2410 = false; error_2410 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2410" vx-show="name_2410.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2410" vx-show="name_2410.trim() === '' || Array.from(name_2410.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2410">Notes</label>
             <textarea
               id="edit-notes-gt-2410"
@@ -630,12 +630,12 @@
               @input="saved_2410 = false; pending_2410 = false; error_2410 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2410" vx-show="notes_2410.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2410.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2410" vx-show="Array.from(notes_2410).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2410).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2410"
               data-vv-test="save"
               @click="pending_2410 = true"
-              :disabled="saved_2410 || pending_2410 || name_2410.trim() === '' || notes_2410.length > 280"
+              :disabled="saved_2410 || pending_2410 || name_2410.trim() === '' || Array.from(name_2410.trim()).length > 80 || Array.from(notes_2410).length > 280"
               :class="saved_2410 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2410" vx-show="pending_2410" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -654,7 +654,7 @@
               @input="saved_2411 = false; pending_2411 = false; error_2411 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2411" vx-show="name_2411.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2411" vx-show="name_2411.trim() === '' || Array.from(name_2411.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2411">Notes</label>
             <textarea
               id="edit-notes-gt-2411"
@@ -663,12 +663,12 @@
               @input="saved_2411 = false; pending_2411 = false; error_2411 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2411" vx-show="notes_2411.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2411.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2411" vx-show="Array.from(notes_2411).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2411).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2411"
               data-vv-test="save"
               @click="pending_2411 = true"
-              :disabled="saved_2411 || pending_2411 || name_2411.trim() === '' || notes_2411.length > 280"
+              :disabled="saved_2411 || pending_2411 || name_2411.trim() === '' || Array.from(name_2411.trim()).length > 80 || Array.from(notes_2411).length > 280"
               :class="saved_2411 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2411" vx-show="pending_2411" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -687,7 +687,7 @@
               @input="saved_2412 = false; pending_2412 = false; error_2412 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2412" vx-show="name_2412.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2412" vx-show="name_2412.trim() === '' || Array.from(name_2412.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2412">Notes</label>
             <textarea
               id="edit-notes-gt-2412"
@@ -696,12 +696,12 @@
               @input="saved_2412 = false; pending_2412 = false; error_2412 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2412" vx-show="notes_2412.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2412.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2412" vx-show="Array.from(notes_2412).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2412).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2412"
               data-vv-test="save"
               @click="pending_2412 = true"
-              :disabled="saved_2412 || pending_2412 || name_2412.trim() === '' || notes_2412.length > 280"
+              :disabled="saved_2412 || pending_2412 || name_2412.trim() === '' || Array.from(name_2412.trim()).length > 80 || Array.from(notes_2412).length > 280"
               :class="saved_2412 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2412" vx-show="pending_2412" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -720,7 +720,7 @@
               @input="saved_2413 = false; pending_2413 = false; error_2413 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2413" vx-show="name_2413.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2413" vx-show="name_2413.trim() === '' || Array.from(name_2413.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2413">Notes</label>
             <textarea
               id="edit-notes-gt-2413"
@@ -729,12 +729,12 @@
               @input="saved_2413 = false; pending_2413 = false; error_2413 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2413" vx-show="notes_2413.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2413.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2413" vx-show="Array.from(notes_2413).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2413).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2413"
               data-vv-test="save"
               @click="pending_2413 = true"
-              :disabled="saved_2413 || pending_2413 || name_2413.trim() === '' || notes_2413.length > 280"
+              :disabled="saved_2413 || pending_2413 || name_2413.trim() === '' || Array.from(name_2413.trim()).length > 80 || Array.from(notes_2413).length > 280"
               :class="saved_2413 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2413" vx-show="pending_2413" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -753,7 +753,7 @@
               @input="saved_2414 = false; pending_2414 = false; error_2414 = ''"
               class="vv-input mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             >
-            <p data-vv-test="name-error-2414" vx-show="name_2414.trim() === ''" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
+            <p data-vv-test="name-error-2414" vx-show="name_2414.trim() === '' || Array.from(name_2414.trim()).length > 80" class="mt-1 text-xs text-red-500">Driver name is required (1-80 characters).</p>
             <label class="mt-3 block text-xs text-slate-500" for="edit-notes-gt-2414">Notes</label>
             <textarea
               id="edit-notes-gt-2414"
@@ -762,12 +762,12 @@
               @input="saved_2414 = false; pending_2414 = false; error_2414 = ''"
               class="vv-input mt-1 w-full h-20 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-800"
             ></textarea>
-            <p data-vv-test="notes-error-2414" vx-show="notes_2414.length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + notes_2414.length + ').'">Notes must be 280 characters or fewer.</p>
+            <p data-vv-test="notes-error-2414" vx-show="Array.from(notes_2414).length > 280" class="mt-1 text-xs text-red-500" vx-text="'Notes must be 280 characters or fewer (currently ' + Array.from(notes_2414).length + ').'">Notes must be 280 characters or fewer.</p>
             <button
               id="save-gt-2414"
               data-vv-test="save"
               @click="pending_2414 = true"
-              :disabled="saved_2414 || pending_2414 || name_2414.trim() === '' || notes_2414.length > 280"
+              :disabled="saved_2414 || pending_2414 || name_2414.trim() === '' || Array.from(name_2414.trim()).length > 80 || Array.from(notes_2414).length > 280"
               :class="saved_2414 ? 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400' : 'mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white'"
             >Save to device</button>
             <p data-vv-test="pending-2414" vx-show="pending_2414" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
@@ -780,5 +780,3 @@
   </main>
 </body>
 </html>
-
-<!-- probe-b 1789947482468344684 -->

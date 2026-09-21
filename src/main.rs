@@ -524,24 +524,61 @@ impl OpsHost {
             &store_note,
         );
         match outcome {
-            SaveOutcome::Saved { html, saved_at } => match self.reload(view, viewport, &html) {
-                Ok(generation) => {
-                    println!(
-                        "ops: saved gt-{suffix} at {saved_at} (generation {generation}, store: {})",
-                        self.store.borrow().path().display()
-                    );
-                    self.drafts
-                        .borrow_mut()
-                        .insert(suffix.clone(), [name, notes]);
-                    view.set_focus(Some(&format!("edit-name-gt-{suffix}")));
+            SaveOutcome::Saved { html, saved_at } => {
+                // The store write succeeded and is authoritative.
+                self.drafts
+                    .borrow_mut()
+                    .insert(suffix.clone(), [name.clone(), notes.clone()]);
+                match self.reload(view, viewport, &html) {
+                    Ok(generation) => {
+                        println!(
+                            "ops: saved gt-{suffix} at {saved_at} (generation {generation}, store: {})",
+                            self.store.borrow().path().display()
+                        );
+                        view.set_focus(Some(&format!("edit-name-gt-{suffix}")));
+                    }
+                    Err(rejection) => {
+                        eprintln!(
+                            "ops: saved gt-{suffix} at {saved_at} to store, but screen reload failed \
+                             ({rejection}) — attempting retry presentation"
+                        );
+                        let message = format!(
+                            "Saved to device at {saved_at}; screen refresh failed ({rejection})"
+                        );
+                        if let Ok(retry_html) = ops::build_document(
+                            &self.files.html,
+                            &self.store.borrow(),
+                            &BuildOpts {
+                                session: Some(session),
+                                store_note,
+                                flash: Some(Flash::SavedRefreshFailed {
+                                    suffix: suffix.clone(),
+                                    saved_at: saved_at.clone(),
+                                    message,
+                                }),
+                            },
+                        ) {
+                            if let Err(e) = self.reload(view, viewport, &retry_html) {
+                                eprintln!("ops: retry presentation reload failed: {e}");
+                            }
+                        }
+                    }
                 }
-                Err(rejection) => {
-                    eprintln!(
-                        "ops: saved gt-{suffix} to the store, but the reload was rejected: \
-                         {rejection} — the change is durable; it appears after a restart."
-                    );
+            }
+            SaveOutcome::SavedRefreshFailed {
+                saved_at: _,
+                html,
+                message,
+            } => {
+                // Store write succeeded; refresh presentation.
+                self.drafts
+                    .borrow_mut()
+                    .insert(suffix.clone(), [name, notes]);
+                eprintln!("ops: {message}");
+                if let Err(e) = self.reload(view, viewport, &html) {
+                    eprintln!("ops: fallback presentation reload failed: {e}");
                 }
-            },
+            }
             SaveOutcome::Rejected(rule) => {
                 eprintln!("ops: save of gt-{suffix} rejected: {rule}");
                 let message = format!("Validation failed — not saved. ({rule})");
@@ -564,9 +601,9 @@ impl OpsHost {
                     }
                 }
             }
-            SaveOutcome::StoreError { html } => {
+            SaveOutcome::StoreError { html, message } => {
                 eprintln!(
-                    "ops: store write failed for gt-{suffix} — your edits are kept on screen, \
+                    "ops: store write failed for gt-{suffix}: {message} — your edits are kept on screen, \
                      retry Save"
                 );
                 if let Err(e) = self.reload(view, viewport, &html) {
@@ -613,7 +650,7 @@ fn smoke_save(
         notes,
         &store_note,
     ) {
-        SaveOutcome::Saved { saved_at, .. } => {
+        SaveOutcome::Saved { saved_at, .. } | SaveOutcome::SavedRefreshFailed { saved_at, .. } => {
             println!(
                 "ops: saved gt-{suffix} at {saved_at} (store: {})",
                 store.path().display()
@@ -621,7 +658,7 @@ fn smoke_save(
             Ok(())
         }
         SaveOutcome::Rejected(rule) => Err(format!("save rejected: {rule}")),
-        SaveOutcome::StoreError { .. } => Err("store write failed".into()),
+        SaveOutcome::StoreError { message, .. } => Err(format!("store write failed: {message}")),
     }
 }
 

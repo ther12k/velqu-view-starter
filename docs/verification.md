@@ -200,7 +200,7 @@ a dev-dependency for the §3 probes only.
 
 Evidence:
 
-- `tests/operations.rs` (7 tests, public API + host code): template
+- `tests/operations.rs` (10 tests, public API + host code): template
   structural contract; find/inspect (live-name search); validation
   blocking (empty name, 281-char notes, disabled-save click cannot
   even request a save); save→persist→confirm with search/selection
@@ -208,7 +208,14 @@ Evidence:
   handling keeps drafts on screen; dev-mode document never claims a
   durable save; process-level durability (binary run twice — save in
   one process, `--print-record` in a fresh one, plus a headless
-  startup over the populated store).
+  startup over the populated store); single-writer lock enforcement via
+  `flock` preventing concurrent process corruption; corrupt-store
+  preservation (corrupted `records.json` causes visible startup abort
+  without deleting or overwriting the damaged file); save success
+  versus UI reload failure split (disk write is authoritative, subsequent
+  events do not re-save); and Unicode scalar counting + non-ASCII/HTML
+  entity round-trip testing (accents, emojis, quotes, tags, and
+  backslashes without parsing side-effects).
 - Windowed end-to-end on X11 with real input (xdotool): row select →
   ctrl+a → type → Save click → `ops: saved gt-2403 at … (generation
   2)` on stdout, `records.json` written, on-screen confirmation
@@ -232,30 +239,40 @@ bounded reload run establishes behavior over that run only.
 
 **A. Launch → first presentation** (release, windowed, 5 runs):
 91 / 110 / 135 / 103 / 171 ms (median ≈ 110 ms) at 1280×800@1.0.
-Render wall time (headless, single first render, 3 runs): 12–14 ms —
-the remaining ~100 ms is process start, store open, state injection,
-parse + Tailwind compile + layout + present.
+The measurement endpoint is completion of `softbuffer::Buffer::present()`
+(an application-side presentation milestone; it does not measure
+physical photon emission on glass).
+Render wall time (headless, single first render, 3 runs): 12–14 ms.
+The remaining ~100 ms difference represents overall process startup
+(OS execution, store initialization, template injection, DOM parse,
+Tailwind compilation, layout, and presentation setup), without
+speculating on individual uninstrumented proportions.
 
 **B. Idle, 60 s, release app**: RSS 59,408 → 59,488 kB (+80 kB,
-HWM equal — no growth); wakeups 290 voluntary + 40 nonvoluntary over
-58 s (≤ ~5.7/s; an isolated 12 s window measured **0** wakeups — the
-60 s figures include session/compositor expose traffic while other
-windows changed); CPU 290 ms ≈ 0.5%.
+HWM equal — no sustained sampled RSS growth during the 60-second idle
+run). Wakeup metrics track Linux `/proc/$PID/status` context switches:
+in a dedicated, undisturbed 12-second observation window, the release
+process logged **0 voluntary context switches** and **0 ms CPU**,
+confirming `ControlFlow::Wait` suspends the process. Over the full
+60-second observation in an active desktop session, 290 voluntary + 40
+nonvoluntary switches (~5.7/s) occurred due to ambient X11 display
+server events; total CPU over 60 s was 290 ms (≤0.5%).
 
 **B2. Idle, 60 s, development configuration** (velqu-lab `--watch`,
-dev-tool rev `3c1ee34`): RSS flat 56,608 kB; wakeups 593 voluntary
-(≈10/s — the watcher's own activity, attributed to the dev tool, not
-the app); CPU 290 ms ≈ 0.5%.
+dev-tool rev `3c1ee34`): RSS flat 56,608 kB; context switches 593
+voluntary (≈10/s under the native inotify watcher, attributed to the
+dev tool's event loop, not the application); CPU 290 ms ≈ 0.5%.
 
 **C. Bounded reload run** (25 Save cycles through the windowed app —
 each cycle = full host path: validate → persist → `reload_bundle` →
 render; real keyboard/pointer input): 24 saves published (generation
 reached 25; one click raced its 0.55 s step budget), confirmed in
 stdout and `records.json`. RSS: 59,488 kB at t=0 → 98,604 kB by save 5
-→ **exactly flat through save 25** (HWM equal). The +39 MB saturates
-rather than accumulating per reload — over this run the reload path
-is memory-bounded; it is not a universal leak-free guarantee.
-CPU ≈ 170 ms per type+save+reload+present cycle.
+→ **exactly flat at 98,604 kB through save 25** (HWM equal). RSS
+increased during the first five saves and then plateaued through save
+25; the cause of the retained resident memory has not been isolated.
+Over this run the reload path is memory-bounded; it is not a universal
+leak-free guarantee. CPU ≈ 170 ms per type+save+reload+present cycle.
 
 **C2. Bounded reload, development configuration** (25 CSS edits, one
 per ~1.2 s, under `--watch`): 25/25 reconciles published

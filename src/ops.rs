@@ -167,26 +167,26 @@ pub fn inject_state(html: &str, pairs: &[(String, StateValue)]) -> Result<String
 }
 
 /// Escapes a value for the two layers it crosses: the JS string literal
-/// first (quotes, backslash, newlines), then the double-quoted HTML
-/// attribute (`&`, `"`). The renderer's HTML parser undoes the second
-/// layer; QuickJS undoes the first — so the value round-trips exactly.
+/// Escapes a value for the two layers it crosses: the JS string literal
+/// first, then the double-quoted HTML attribute.
+///
+/// Quotes are encoded as Unicode escapes (`\u0027`, `\u0022`): this prevents
+/// quotes from closing either the HTML attribute or the single-quoted JS literal,
+/// while guaranteeing compatibility with reactive lexical scanners that do not
+/// track backslash-escaped quote characters inside strings.
 pub fn escape_for_attribute(value: &str) -> String {
-    let mut js = String::with_capacity(value.len());
+    let mut out = String::with_capacity(value.len() * 2);
     for c in value.chars() {
         match c {
-            '\\' => js.push_str("\\\\"),
-            '\'' => js.push_str("\\'"),
-            '\n' => js.push_str("\\n"),
-            '\r' => js.push_str("\\r"),
-            '\t' => js.push_str("\\t"),
-            other => js.push(other),
-        }
-    }
-    let mut out = String::with_capacity(js.len());
-    for c in js.chars() {
-        match c {
+            '\\' => out.push_str("\\\\"),
+            '\'' => out.push_str("\\u0027"),
+            '"' => out.push_str("\\u0022"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
             '&' => out.push_str("&amp;"),
-            '"' => out.push_str("&quot;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
             other => out.push(other),
         }
     }
@@ -194,16 +194,37 @@ pub fn escape_for_attribute(value: &str) -> String {
 }
 
 /// Inverts the HTML-attribute escapes this module emits (`&amp;`,
-/// `&quot;` — nothing else). Applied before [`unescape_js`], reversing
-/// the serializer's layer order so injected documents parse exactly
-/// like templates.
+/// `&quot;`, `&lt;`, `&gt;`). Entity-aware scanning prevents accidental
+/// substring corruption (e.g. literal `&quot;` becoming `&"`).
 fn unescape_html(value: &str) -> String {
-    value.replace("&quot;", "\"").replace("&amp;", "&")
+    let mut out = String::with_capacity(value.len());
+    let mut rest = value;
+    while let Some(pos) = rest.find('&') {
+        out.push_str(&rest[..pos]);
+        let after = &rest[pos..];
+        if let Some(stripped) = after.strip_prefix("&quot;") {
+            out.push('"');
+            rest = stripped;
+        } else if let Some(stripped) = after.strip_prefix("&amp;") {
+            out.push('&');
+            rest = stripped;
+        } else if let Some(stripped) = after.strip_prefix("&lt;") {
+            out.push('<');
+            rest = stripped;
+        } else if let Some(stripped) = after.strip_prefix("&gt;") {
+            out.push('>');
+            rest = stripped;
+        } else {
+            out.push('&');
+            rest = &after[1..];
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
-/// Inverts the JS-string escapes. Template seeds and serializer output
-/// only ever contain the escape set below; anything else is a format
-/// error.
+/// Inverts the JS-string escapes. Supports named escapes (`\'`, `\"`, `\\`,
+/// `\n`, `\r`, `\t`) and 4-digit unicode escapes (`\uXXXX`).
 fn unescape_js(value: &str) -> Result<String, String> {
     let mut out = String::with_capacity(value.len());
     let mut chars = value.chars();
@@ -214,10 +235,26 @@ fn unescape_js(value: &str) -> Result<String, String> {
         }
         match chars.next() {
             Some('\'') => out.push('\''),
+            Some('"') => out.push('"'),
             Some('\\') => out.push('\\'),
             Some('n') => out.push('\n'),
             Some('r') => out.push('\r'),
             Some('t') => out.push('\t'),
+            Some('u') => {
+                let mut hex = String::with_capacity(4);
+                for _ in 0..4 {
+                    if let Some(h) = chars.next() {
+                        hex.push(h);
+                    } else {
+                        return Err(format!("incomplete \\u escape in {value:?}"));
+                    }
+                }
+                let code = u32::from_str_radix(&hex, 16)
+                    .map_err(|e| format!("invalid \\u escape {hex:?}: {e}"))?;
+                let ch =
+                    char::from_u32(code).ok_or_else(|| format!("invalid unicode char {code:?}"))?;
+                out.push(ch);
+            }
             other => return Err(format!("unknown escape {other:?} in {value:?}")),
         }
     }
@@ -227,6 +264,13 @@ fn unescape_js(value: &str) -> Result<String, String> {
 // ---------------------------------------------------------------------------
 // Record store: records.json in an explicit data directory
 // ---------------------------------------------------------------------------
+
+use std::fs::{File, OpenOptions};
+use std::io::Write;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static TMP_FILE_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// One persisted record correction. Keys are the numeric record suffix
 /// (`"2401"` for GT-2401) so store entries never depend on the DOM.
@@ -250,25 +294,65 @@ struct StoreFile {
 /// persisted correction over the template's seed values.
 #[derive(Debug, Clone)]
 pub struct RecordStore {
+    data_dir: PathBuf,
     path: PathBuf,
     overrides: BTreeMap<String, Override>,
+    _lock: Option<Arc<File>>,
 }
 
 impl RecordStore {
     /// Opens (creating the directory if needed) the store. A missing
     /// file is an empty store — the first run seeds nothing and every
     /// record shows its authored values.
+    ///
+    /// Enforces a single-writer policy per data directory via an advisory
+    /// kernel file lock (`flock`). If another instance holds the lock,
+    /// opening fails with a descriptive error.
+    ///
+    /// If an existing `records.json` is corrupt or has an invalid schema,
+    /// this function fails and preserves the problematic file on disk
+    /// (does not overwrite or reinitialize as empty).
     pub fn open(data_dir: &Path) -> Result<Self, String> {
         std::fs::create_dir_all(data_dir)
             .map_err(|e| format!("cannot create data dir {}: {e}", data_dir.display()))?;
+
+        let lock_path = data_dir.join(".lock");
+        let lock_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&lock_path)
+            .map_err(|e| format!("cannot open lockfile {}: {e}", lock_path.display()))?;
+
+        rustix::fs::flock(
+            &lock_file,
+            rustix::fs::FlockOperation::NonBlockingLockExclusive,
+        )
+        .map_err(|e| {
+            if e == rustix::io::Errno::WOULDBLOCK || e == rustix::io::Errno::AGAIN {
+                format!(
+                    "another application instance is using data directory {} (lock on {})",
+                    data_dir.display(),
+                    lock_path.display()
+                )
+            } else {
+                format!("failed to lock {}: {e}", lock_path.display())
+            }
+        })?;
+
         let path = data_dir.join("records.json");
         let overrides = match std::fs::read_to_string(&path) {
             Ok(text) => {
-                let file: StoreFile = serde_json::from_str(&text)
-                    .map_err(|e| format!("cannot parse {}: {e}", path.display()))?;
+                let file: StoreFile = serde_json::from_str(&text).map_err(|e| {
+                    format!(
+                        "cannot parse corrupt or invalid records file {} (file preserved): {e}",
+                        path.display()
+                    )
+                })?;
                 if file.schema != 1 {
                     return Err(format!(
-                        "{} has schema {} (expected 1)",
+                        "records file {} has schema {} (expected 1; file preserved)",
                         path.display(),
                         file.schema
                     ));
@@ -278,7 +362,17 @@ impl RecordStore {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => BTreeMap::new(),
             Err(e) => return Err(format!("cannot read {}: {e}", path.display())),
         };
-        Ok(Self { path, overrides })
+        Ok(Self {
+            data_dir: data_dir.to_owned(),
+            path,
+            overrides,
+            _lock: Some(Arc::new(lock_file)),
+        })
+    }
+
+    /// The data directory path.
+    pub fn data_dir(&self) -> &Path {
+        &self.data_dir
     }
 
     /// The store file path (shown to operators in the rail note).
@@ -306,9 +400,14 @@ impl RecordStore {
         self.overrides.keys().cloned().collect()
     }
 
-    /// Persists one correction: update in memory, then write the whole
-    /// file atomically (tmp file + rename) so a crash mid-save can
-    /// never leave a truncated store.
+    /// Persists one correction with local-filesystem crash durability:
+    ///
+    /// 1. Create a unique temporary file in the destination directory
+    /// 2. Write the complete serialized record set
+    /// 3. Flush the userspace writer
+    /// 4. Sync the temporary file (`sync_all`)
+    /// 5. Atomically rename over `records.json`
+    /// 6. Sync the parent directory to commit the directory entry
     pub fn save_record(
         &mut self,
         suffix: &str,
@@ -330,9 +429,31 @@ impl RecordStore {
         };
         let text = serde_json::to_string_pretty(&file)
             .map_err(|e| std::io::Error::other(format!("serialize: {e}")))?;
-        let tmp = self.path.with_extension("json.tmp");
-        std::fs::write(&tmp, text)?;
-        std::fs::rename(&tmp, &self.path)
+
+        let counter = TMP_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let tmp = self.data_dir.join(format!(
+            ".records.json.tmp.{}.{}.{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0),
+            counter
+        ));
+
+        let mut tmp_file = OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+        tmp_file.write_all(text.as_bytes())?;
+        tmp_file.flush()?;
+        tmp_file.sync_all()?;
+        drop(tmp_file);
+
+        std::fs::rename(&tmp, &self.path)?;
+
+        if let Ok(dir) = File::open(&self.data_dir) {
+            let _ = dir.sync_all();
+        }
+
+        Ok(())
     }
 }
 
@@ -360,6 +481,15 @@ pub enum Flash {
         suffix: String,
         /// RFC 3339 timestamp written to the store.
         saved_at: String,
+    },
+    /// The save succeeded on disk, but presentation refresh had an issue.
+    SavedRefreshFailed {
+        /// Record suffix.
+        suffix: String,
+        /// RFC 3339 timestamp written to the store.
+        saved_at: String,
+        /// Notice explaining that disk persistence succeeded.
+        message: String,
     },
     /// The save failed; drafts stay on screen with the error visible.
     Error {
@@ -487,12 +617,33 @@ pub fn build_document(
                 format!("saved_at_{suffix}"),
                 saved_at.clone(),
             );
+            upsert_bool(&mut pairs, &existing, format!("saved_{suffix}"), true);
             upsert_bool(&mut pairs, &existing, format!("pending_{suffix}"), false);
             upsert_str(
                 &mut pairs,
                 &existing,
                 format!("error_{suffix}"),
                 String::new(),
+            );
+        }
+        Some(Flash::SavedRefreshFailed {
+            suffix,
+            saved_at,
+            message,
+        }) => {
+            upsert_str(
+                &mut pairs,
+                &existing,
+                format!("saved_at_{suffix}"),
+                saved_at.clone(),
+            );
+            upsert_bool(&mut pairs, &existing, format!("saved_{suffix}"), true);
+            upsert_bool(&mut pairs, &existing, format!("pending_{suffix}"), false);
+            upsert_str(
+                &mut pairs,
+                &existing,
+                format!("error_{suffix}"),
+                message.clone(),
             );
         }
         Some(Flash::Error {
@@ -546,6 +697,18 @@ pub enum SaveOutcome {
     StoreError {
         /// Document to load.
         html: String,
+        /// Error message.
+        message: String,
+    },
+    /// The store write succeeded, but generating the normal replacement
+    /// document failed. The stored record is authoritative.
+    SavedRefreshFailed {
+        /// Timestamp recorded in the store.
+        saved_at: String,
+        /// Fallback document to load.
+        html: String,
+        /// Notice message.
+        message: String,
     },
 }
 
@@ -578,7 +741,7 @@ pub fn apply_save(
                     suffix: suffix.to_owned(),
                     name: name.to_owned(),
                     notes: notes.to_owned(),
-                    message,
+                    message: message.clone(),
                 }),
             },
         )
@@ -588,7 +751,7 @@ pub fn apply_save(
             eprintln!("ops: rebuilding after store error failed: {e}");
             template.to_owned()
         });
-        return SaveOutcome::StoreError { html };
+        return SaveOutcome::StoreError { html, message };
     }
     match build_document(
         template,
@@ -605,10 +768,27 @@ pub fn apply_save(
         Ok(html) => SaveOutcome::Saved { html, saved_at },
         Err(e) => {
             // The store write succeeded; only the document rebuild
-            // failed. Keep the old document on screen and say so.
+            // failed. The record is durably on disk.
             eprintln!("ops: document rebuild after save failed: {e}");
-            SaveOutcome::StoreError {
-                html: template.to_owned(),
+            let message = format!("Saved to device at {saved_at}; screen refresh failed ({e})");
+            let fallback_html = build_document(
+                template,
+                store,
+                &BuildOpts {
+                    session: Some(session.clone()),
+                    store_note: store_note.to_owned(),
+                    flash: Some(Flash::SavedRefreshFailed {
+                        suffix: suffix.to_owned(),
+                        saved_at: saved_at.clone(),
+                        message: message.clone(),
+                    }),
+                },
+            )
+            .unwrap_or_else(|_| template.to_owned());
+            SaveOutcome::SavedRefreshFailed {
+                saved_at,
+                html: fallback_html,
+                message,
             }
         }
     }
@@ -722,7 +902,11 @@ mod tests {
             ("flag".to_owned(), StateValue::Bool(false)),
         ];
         let html = inject_state(MINIMAL, &pairs).unwrap();
-        assert!(html.contains("tricky: 'it\\'s a &quot;test&quot; &amp; \\\\ back\\nline\\ttab',"));
+        assert!(
+            html.contains(
+                "tricky: 'it\\u0027s a \\u0022test\\u0022 &amp; \\\\ back\\nline\\ttab',"
+            )
+        );
         let back = parse_state_block(&html).unwrap();
         assert_eq!(back, pairs);
     }
@@ -759,6 +943,8 @@ mod tests {
         store
             .save_record("2401", "Budi Jr", "ok", "2026-09-21T07:00:00Z")
             .unwrap();
+        // Drop the first instance to release the lock, simulating process exit
+        drop(store);
         // Reopen: the correction survived the process boundary.
         let reopened = RecordStore::open(&dir).unwrap();
         assert_eq!(reopened.len(), 1);
@@ -829,5 +1015,98 @@ mod tests {
             other => panic!("expected Saved, got {other:?}"),
         }
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn single_writer_lock_prevents_concurrent_access() {
+        let dir = std::env::temp_dir().join(format!("vv-starter-lock-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store1 = RecordStore::open(&dir).expect("first open succeeds");
+        assert_eq!(store1.len(), 0);
+
+        let err = RecordStore::open(&dir).expect_err("second open must fail while lock is held");
+        assert!(
+            err.contains("another application instance is using data directory"),
+            "got error: {err}"
+        );
+
+        drop(store1);
+
+        let store2 = RecordStore::open(&dir).expect("open succeeds after first is dropped");
+        assert_eq!(store2.len(), 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn corrupt_store_file_is_preserved_and_never_overwritten() {
+        let dir = std::env::temp_dir().join(format!("vv-starter-corrupt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("records.json");
+        let corrupt_payload = "{\"schema\": 1, \"overrides\": { TRUNCATED JSON...";
+        std::fs::write(&path, corrupt_payload).unwrap();
+
+        let err = RecordStore::open(&dir).expect_err("opening corrupt store must fail");
+        assert!(err.contains("file preserved"), "got error: {err}");
+
+        // Verify the file was not deleted or altered
+        let on_disk = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(on_disk, corrupt_payload);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unicode_and_tricky_characters_round_trip_cleanly() {
+        let tricky_cases = [
+            "O'Connor & Sons",
+            "A quoted \"nickname\"",
+            "Text containing <tag> & </tag>",
+            "Backslashes \\ and line breaks \n\r\t tab",
+            "Literal entity-looking text such as &quot; and &amp; and &lt;tag&gt;",
+            "Trucks 🚚 and accents: Café au lait (e\u{0301})",
+        ];
+
+        for (i, text) in tricky_cases.iter().enumerate() {
+            let key = format!("case_{i}");
+            let pairs = vec![(key.clone(), StateValue::Str((*text).to_owned()))];
+            let html = inject_state(MINIMAL, &pairs).unwrap();
+            let parsed = parse_state_block(&html).unwrap();
+            assert_eq!(parsed.len(), 1);
+            assert_eq!(parsed[0].0, key);
+            assert_eq!(
+                parsed[0].1.as_str().unwrap(),
+                *text,
+                "failed round-trip for: {text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn validation_counts_unicode_scalar_values_matching_js() {
+        // Emojis: 1 Unicode scalar value each (4 bytes UTF-8, 2 UTF-16 code units)
+        let eighty_emojis = "🚚".repeat(80);
+        let eighty_one_emojis = "🚚".repeat(81);
+        assert!(validate(&eighty_emojis, "").is_ok());
+        assert!(validate(&eighty_one_emojis, "").is_err());
+
+        // Accented Latin characters
+        let eighty_accents = "é".repeat(80);
+        let eighty_one_accents = "é".repeat(81);
+        assert!(validate(&eighty_accents, "").is_ok());
+        assert!(validate(&eighty_one_accents, "").is_err());
+
+        // Combining sequence: e + combining acute (2 scalar values)
+        let combining = "e\u{0301}";
+        assert_eq!(combining.chars().count(), 2);
+        let forty_combining = combining.repeat(40); // 80 chars
+        let forty_one_combining = combining.repeat(41); // 82 chars
+        assert!(validate(&forty_combining, "").is_ok());
+        assert!(validate(&forty_one_combining, "").is_err());
+
+        // Notes limit 280
+        let two_eighty_emojis = "📦".repeat(280);
+        let two_eighty_one_emojis = "📦".repeat(281);
+        assert!(validate("Driver", &two_eighty_emojis).is_ok());
+        assert!(validate("Driver", &two_eighty_one_emojis).is_err());
     }
 }

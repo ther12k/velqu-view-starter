@@ -28,6 +28,7 @@ arboard = "3"
 # explicitly not part of the renderer.
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+rustix = { version = "0.38", default-features = false, features = ["fs"] }
 
 # Diagnostic examples only (examples/*_probe.rs); not used by the app.
 # velqu-shell is here for the two watch-defect probes, which reproduce

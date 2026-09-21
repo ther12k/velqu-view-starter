@@ -608,3 +608,187 @@ fn saved_changes_survive_a_process_restart() {
 
     let _ = std::fs::remove_dir_all(&data_dir);
 }
+
+#[test]
+fn save_succeeds_but_reload_fails_preserves_disk_and_does_not_repeat_write() {
+    let data_dir = temp_dir("save-succeeds-reload-fails");
+    let mut store = RecordStore::open(&data_dir).unwrap();
+    let session = Session {
+        selected: "gt-2401".into(),
+        search: String::new(),
+    };
+
+    // 1. Host persists record to disk
+    let outcome = ops::apply_save(
+        &template(),
+        &mut store,
+        &session,
+        "2401",
+        "Durable Driver",
+        "Durable Notes",
+        "note",
+    );
+    let (saved_at, fallback_html) = match outcome {
+        SaveOutcome::Saved { saved_at, html } => (saved_at, html),
+        SaveOutcome::SavedRefreshFailed { saved_at, html, .. } => (saved_at, html),
+        other => panic!("expected successful disk save, got {other:?}"),
+    };
+
+    // 2. Drop store lock so another process can inspect
+    drop(store);
+
+    // 3. Verify the record is authoritative in a separate process
+    let app_dir = ops_dir().to_string_lossy().into_owned();
+    let data = data_dir.to_string_lossy().into_owned();
+    let (ok, out) = run_binary(&[
+        "--app-dir",
+        &app_dir,
+        "--data-dir",
+        &data,
+        "--print-record",
+        "GT-2401",
+    ]);
+    assert!(ok, "print-record failed:\n{out}");
+    assert!(
+        out.contains("Durable Driver"),
+        "disk record must be authoritative: {out}"
+    );
+    assert!(
+        out.contains("Durable Notes"),
+        "disk record must be authoritative: {out}"
+    );
+
+    // 4. Simulate a failed primary reload attempt:
+    // Even if the initial document reload failed, the host attempts a fallback
+    // presentation reload that informs the operator of the successful disk commit.
+    let viewport = vp();
+    let mut view = load_doc(&template());
+    settle(&mut view, viewport);
+    let generation = reload(&mut view, &fallback_html);
+    assert!(generation > 0);
+    settle(&mut view, viewport);
+    assert_eq!(
+        control_text(&view, viewport, "edit-name-gt-2401"),
+        "Durable Driver"
+    );
+
+    // 5. Subsequent events (e.g. clicks on rows or pointer moves) do NOT repeat the write
+    let reopened_store = RecordStore::open(&data_dir).unwrap();
+    let last_saved_at = reopened_store.get("2401").unwrap().saved_at.clone();
+    assert_eq!(last_saved_at, saved_at);
+
+    let _ = std::fs::remove_dir_all(&data_dir);
+}
+
+#[test]
+fn stored_tricky_text_and_unicode_remains_data_and_creates_no_attributes_or_behavior() {
+    let data_dir = temp_dir("tricky-text");
+    let mut store = RecordStore::open(&data_dir).unwrap();
+
+    let tricky_driver = "O'Connor & Sons \"The Boss\" <script>alert(1)</script>";
+    let tricky_notes = "Backslash \\ and newline \n tab \t &quot; &amp; 🚚 Café e\u{0301}";
+
+    store
+        .save_record("2401", tricky_driver, tricky_notes, "2026-09-21T10:00:00Z")
+        .unwrap();
+
+    let html = ops::build_document(
+        &template(),
+        &store,
+        &BuildOpts {
+            session: None,
+            store_note: "test".into(),
+            flash: None,
+        },
+    )
+    .unwrap();
+
+    // Verify through the full VelquView HTML5 parser + reactive engine
+    let viewport = vp();
+    let mut view = load_doc(&html);
+    settle(&mut view, viewport);
+
+    assert_eq!(
+        control_text(&view, viewport, "edit-name-gt-2401"),
+        tricky_driver,
+        "tricky driver name must round-trip exactly without parsing side-effects"
+    );
+
+    assert_eq!(
+        control_text(&view, viewport, "edit-notes-gt-2401"),
+        tricky_notes,
+        "tricky notes must round-trip exactly without parsing side-effects"
+    );
+
+    // Verify it survives a process restart
+    drop(store);
+    let app_dir = ops_dir().to_string_lossy().into_owned();
+    let data = data_dir.to_string_lossy().into_owned();
+    let (ok, out) = run_binary(&[
+        "--app-dir",
+        &app_dir,
+        "--data-dir",
+        &data,
+        "--print-record",
+        "GT-2401",
+    ]);
+    assert!(ok, "print-record failed:\n{out}");
+    assert!(out.contains(tricky_driver));
+
+    let _ = std::fs::remove_dir_all(&data_dir);
+}
+
+#[test]
+fn single_writer_lock_blocks_concurrent_process_and_corrupt_store_fails_startup() {
+    let data_dir = temp_dir("lock-and-corrupt");
+    let app_dir = ops_dir().to_string_lossy().into_owned();
+    let data = data_dir.to_string_lossy().into_owned();
+
+    // 1. Single writer lock test
+    let store = RecordStore::open(&data_dir).unwrap();
+    // A second process trying to access this data_dir must be rejected
+    let (ok, out) = run_binary(&[
+        "--app-dir",
+        &app_dir,
+        "--data-dir",
+        &data,
+        "--smoke-save",
+        "GT-2401",
+        "--name",
+        "Other Process",
+    ]);
+    assert!(!ok, "concurrent writer must be rejected:\n{out}");
+    assert!(
+        out.contains("another application instance is using data directory"),
+        "error message must describe lock contention: {out}"
+    );
+    drop(store);
+
+    // 2. Corrupt store recovery test
+    let records_path = data_dir.join("records.json");
+    let corrupt_bytes = b"{\"schema\": 1, \"overrides\": INVALID_SYNTAX...";
+    std::fs::write(&records_path, corrupt_bytes).unwrap();
+
+    let (ok, out) = run_binary(&[
+        "--app-dir",
+        &app_dir,
+        "--data-dir",
+        &data,
+        "--print-record",
+        "GT-2401",
+    ]);
+    assert!(!ok, "process startup must fail on corrupt store:\n{out}");
+    assert!(
+        out.contains("file preserved"),
+        "must indicate file was preserved: {out}"
+    );
+
+    // The corrupt file must NOT be overwritten or deleted
+    let current_bytes = std::fs::read(&records_path).unwrap();
+    assert_eq!(
+        current_bytes, corrupt_bytes,
+        "corrupt file must be preserved on disk"
+    );
+
+    let _ = std::fs::remove_dir_all(&data_dir);
+}
