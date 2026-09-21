@@ -305,9 +305,14 @@ acceptance:
    lands. Once the rename succeeds the new store owns the pathname, so
    a later failure is never reported as "not saved"; a failed
    directory sync after a successful rename is surfaced as a loud
-   warning that the save may not survive sudden power loss. This is
-   the documented Linux local-filesystem sequence — it has not been
-   power-loss tested on deployment hardware.
+   log warning that the save may not survive sudden power loss.
+   Directory-sync failures are detected and logged; the supervised
+   pilot requires the supervisor to monitor these log warnings.
+   Operator-facing UI differentiation of this intermediate outcome
+   (e.g. distinct `SavedWithDurabilityWarning` on-screen notice) is
+   not established by this change and remains an explicit pilot
+   boundary. This is the documented Linux local-filesystem sequence —
+   it has not been power-loss tested on deployment hardware.
 2. **Single writer is application coordination, not access control.**
    The `.lock` flock is advisory: cooperating instances (this
    application, `--smoke-save`, `--print-record`) are serialized;
@@ -328,6 +333,31 @@ unchanged; X11 results do not establish Wayland behavior; live IME
 remains platform-specific evidence; the bounded memory plateau is not
 an indefinite-duration leak-free claim. The named next step is
 **supervised operator acceptance** against this pinned build with a
-backed-up pilot dataset — an operator completing the real correction
-workflow and distinguishing a successful save, a rejected edit, and a
-post-save presentation problem.
+backed-up pilot dataset.
+
+### 6.5 Supervised operator acceptance protocol
+
+**Tested revision:** `369949a25268becaa348f297faf2e57e4b361389` (Cargo.lock pinned).
+**Build identity:** `cargo build --release` (packaged release binary, watching/inspection off).
+**Environment:** Linux X11 workstation, isolated pilot data directory (e.g. `--data-dir /tmp/pilot-data`), pre-session backup copy taken with the application stopped.
+**Supervisor responsibility:** Monitor terminal stdout/stderr for warnings (specifically directory-sync or lock contention warnings).
+
+The three scenarios:
+
+1. **Successful save:**
+   - Operator finds a record by search, inspects read-only fields, corrects the driver name, and clicks *Save to device*.
+   - Operator observes on-screen acknowledgement: `"Saved to device at <UTC> — survives restart."` (The timestamp is the application's acknowledgement marker; it confirms host disk round-trip).
+   - Operator closes the application and relaunches.
+   - Operator confirms the correction remains present in the reloaded interface.
+   - *Interpretation:* Confirms application restart survival in the tested environment. Does not constitute hardware power-loss qualification.
+2. **Rejected edit:**
+   - Operator clears the driver name (or enters invalid input).
+   - Operator observes field validation error (`"Driver name is required (1-80 characters)."`).
+   - Operator confirms *Save to device* remains disabled and clicking does nothing.
+   - Draft text remains available on screen; store on disk remains completely unchanged.
+   - *Observation capture:* Record the selected transaction ID, exact validation rule fired, disabled button state, and confirm disk store unchanged.
+3. **Presentation failure after saving (Briefing & Automated Proof):**
+   - *Operator briefing:* Teach the core rule:
+     > **No banner means no save claim.**
+     > *Companion rule:* **No confirmation does not prove that saving failed.** The record may have been saved before the screen refresh failed. Ask the supervisor to verify the record before retrying, rather than repeatedly clicking save.
+   - *Verification status:* This failure path is pinned by automated fault injection in `tests/operations.rs` (`save_succeeds_but_reload_fails_preserves_disk_and_does_not_repeat_write`). It is not induced during the human operator session, so it is recorded as *automated fault verification plus operator briefing*.
