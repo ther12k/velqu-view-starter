@@ -101,7 +101,16 @@ pub struct HostWindowStats {
 /// Host hook run on the main thread each redraw, after the reactive
 /// pump and before the frame renders, with the drained event batch.
 /// This is where the operations workflow observes Save clicks.
-pub type FrameEventsHook<'a> = Box<dyn FnMut(&mut VelquView, Viewport, &[Event]) + 'a>;
+///
+/// Returns whether the hook published new application state (a save
+/// outcome reloads the presentation document). When true, the loop
+/// requests another redraw so the published state is presented even if
+/// this redraw's frame was obtained before publication — state changes
+/// must never wait for an unrelated input event to become visible
+/// (post-save acknowledgement regression, corrective-1). This is an
+/// edge-triggered request, not polling: with nothing to publish the
+/// loop stays quiescent on `ControlFlow::Wait`.
+pub type FrameEventsHook<'a> = Box<dyn FnMut(&mut VelquView, Viewport, &[Event]) -> bool + 'a>;
 
 /// Opens a window and runs the loop until close/exit-after/error.
 pub fn run_host_window(
@@ -371,13 +380,45 @@ impl HostApp<'_> {
         };
         let batch = self.view.take_events();
         self.view.pump_reactive(&batch);
+        if std::env::var_os("VELQU_TRACE_PRESENT").is_some() && !batch.is_empty() {
+            eprintln!(
+                "trace: redraw batch={} gen_before={}",
+                batch.len(),
+                self.view.reactive_plan().map(|_| 0).unwrap_or(0)
+            );
+            for event in &batch {
+                let kind = match event {
+                    Event::Click { target } => format!("Click({})", target.id.as_deref().unwrap_or("?")),
+                    Event::ValueChanged { target, .. } => {
+                        format!("ValueChanged({})", target.id.as_deref().unwrap_or("?"))
+                    }
+                    other => format!("{other:?}"),
+                };
+                eprintln!("trace:   {kind}");
+            }
+        }
         if let Some(hook) = self.hook.as_mut() {
-            hook(self.view, viewport, &batch);
+            if hook(self.view, viewport, &batch) {
+                // New application state exists; guarantee it reaches the
+                // window (edge-triggered, no polling).
+                self.dirty = true;
+                self.request_redraw();
+            }
         }
         let FrameResult { frame, .. } = self
             .view
             .render(viewport)
             .map_err(|e| format!("render failed: {e}"))?;
+        if std::env::var_os("VELQU_TRACE_PRESENT").is_some() {
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            std::hash::Hash::hash_slice(frame.pixels(), &mut hasher);
+            use std::hash::Hasher;
+            eprintln!(
+                "trace: rendered frame hash={:016x} ({} px), presenting",
+                std::hash::Hasher::finish(&hasher),
+                frame.pixels().len() / 4
+            );
+        }
 
         let Some(window) = self.window.clone() else {
             return Ok(());

@@ -14,6 +14,15 @@
   background-color: #f1f5f9; /* slate-100 */
 }
 
+/* Selected rows keep their selected paint while hovered: same specificity
+ * as .vv-row:hover (two classes), later order wins — without this the
+ * just-clicked row painted page-background slate-100 and the selection
+ * was invisible until the pointer moved away (corrective-1, operator
+ * finding 2). */
+.vv-row.vv-row-selected {
+  background-color: #eef2ff; /* indigo-50 */
+}
+
 /* Inputs: focus ring within the paint-property set */
 .vv-input:focus {
   border-color: #6366f1; /* indigo-500 */

@@ -467,7 +467,9 @@ impl OpsHost {
     /// The frame hook: track session + drafts from the public event
     /// batch, and when the operator clicked Save, run the authoritative
     /// host path (validate → persist → reload from persisted truth).
-    fn on_events(&self, view: &mut VelquView, viewport: Viewport, batch: &[Event]) {
+    /// Returns whether presentation state was published (every save
+    /// outcome rebuilds and reloads the document).
+    fn on_events(&self, view: &mut VelquView, viewport: Viewport, batch: &[Event]) -> bool {
         let mut save_suffix: Option<String> = None;
         for event in batch {
             match event {
@@ -506,7 +508,7 @@ impl OpsHost {
                 _ => {}
             }
         }
-        let Some(suffix) = save_suffix else { return };
+        let Some(suffix) = save_suffix else { return false };
 
         let (name, notes) = self.current_fields(&suffix);
         let session = self.session.borrow().clone();
@@ -611,6 +613,8 @@ impl OpsHost {
                 }
             }
         }
+        // Every outcome above rebuilt and reloaded the presentation.
+        true
     }
 }
 
@@ -886,7 +890,7 @@ fn main() -> ExitCode {
         } else {
             let hook_host = Rc::clone(&host);
             let hook: FrameEventsHook = Box::new(move |view, viewport, batch| {
-                hook_host.on_events(view, viewport, batch);
+                hook_host.on_events(view, viewport, batch)
             });
             run_window(&args, launch, &mut view, Some(hook))
         }

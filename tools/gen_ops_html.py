@@ -46,8 +46,17 @@ RECORDS = [
 STATUS_CLASS = {"CLEARED": "text-emerald-600", "PENDING": "text-amber-500", "REJECTED": "text-red-500"}
 
 ROW_UNSEL = "vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-white border-slate-200"
-ROW_SEL = "vv-row flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400"
+# The selected branch carries `vv-row-selected`: the author rule
+# `.vv-row.vv-row-selected` (app.css, after the hover rule) keeps the
+# selected paint winning over `.vv-row:hover` while the pointer rests on
+# the just-clicked row (corrective-1, operator finding 2).
+ROW_SEL = "vv-row vv-row-selected flex justify-between items-center rounded-md border px-3 py-2 mt-2 bg-indigo-50 border-indigo-400"
 BTN_SAVED = "mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-200 text-slate-400"
+# Blocked (invalid input or in-flight save): visibly unavailable — flat
+# gray like saved PLUS a visible border, driven by the SAME predicate as
+# :disabled so appearance and activation cannot disagree (corrective-1,
+# operator finding 3). Hover adds nothing (no button hover rule exists).
+BTN_BLOCKED = "mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-slate-100 text-slate-400 border border-slate-300"
 BTN_ACTIVE = "mt-3 w-full rounded-md px-3 py-2 text-sm font-medium bg-indigo-600 text-white"
 
 
@@ -147,7 +156,7 @@ def details_html() -> str:
               data-vv-test="save"
               @click="pending_{r.suffix} = true"
               :disabled="saved_{r.suffix} || pending_{r.suffix} || name_{r.suffix}.trim() === '' || Array.from(name_{r.suffix}.trim()).length > 80 || Array.from(notes_{r.suffix}).length > 280"
-              :class="saved_{r.suffix} ? '{BTN_SAVED}' : '{BTN_ACTIVE}'"
+              :class="saved_{r.suffix} ? '{BTN_SAVED}' : ((pending_{r.suffix} || name_{r.suffix}.trim() === '' || Array.from(name_{r.suffix}.trim()).length > 80 || Array.from(notes_{r.suffix}).length > 280) ? '{BTN_BLOCKED}' : '{BTN_ACTIVE}')"
             >Save to device</button>
             <p data-vv-test="pending-{r.suffix}" vx-show="pending_{r.suffix}" class="mt-2 text-xs text-amber-600">Saving — the app host writes records.json to the data directory.</p>
             <p data-vv-test="saved-{r.suffix}" vx-show="saved_{r.suffix} && !pending_{r.suffix} && saved_at_{r.suffix} !== ''" class="mt-2 text-xs text-emerald-600" vx-text="'Saved to device' + (saved_at_{r.suffix} === '' ? '' : ' at ' + saved_at_{r.suffix}) + ' — survives restart.'">Saved to device — survives restart.</p>
