@@ -778,16 +778,40 @@ fn run_headless(
     Ok(())
 }
 
+/// The window title for a launch. Bundled apps keep their recorded
+/// titles; a directory app takes its own `<title>` so `--app-dir`
+/// samples do not present as the ops binary.
+fn window_title(args: &Args, source: &AppSource, files: &AppFiles) -> String {
+    match source {
+        AppSource::Directory(_) if args.app_dir.is_some() => {
+            let start = files.html.find("<title>").map(|i| i + 7);
+            let end = files.html.find("</title>");
+            match (start, end) {
+                (Some(s), Some(e)) if s < e => {
+                    let title = files.html[s..e].trim();
+                    if title.is_empty() {
+                        "VelquView — velqu-view-starter".into()
+                    } else {
+                        title.into()
+                    }
+                }
+                _ => "VelquView — velqu-view-starter".into(),
+            }
+        }
+        _ => match args.app {
+            AppKind::Ops => "Gate Ops — velqu-view-starter".into(),
+            AppKind::Dashboard => "Gate Ops Dashboard — velqu-view-starter".into(),
+        },
+    }
+}
+
 fn run_window(
     args: &Args,
+    title: &str,
     launch: Instant,
     view: &mut VelquView,
     hook: Option<FrameEventsHook<'_>>,
 ) -> Result<(), String> {
-    let title = match args.app {
-        AppKind::Ops => "Gate Ops — velqu-view-starter",
-        AppKind::Dashboard => "Gate Ops Dashboard — velqu-view-starter",
-    };
     let mut config =
         HostWindowConfig::new(title).with_logical_size(args.size.0 as f32, args.size.1 as f32);
     if let Some(exit_after) = args.exit_after {
@@ -830,6 +854,7 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    let title = window_title(&args, &source, &files);
 
     // Ops smoke modes run the real host paths and exit, no window.
     if args.app == AppKind::Ops {
@@ -892,7 +917,7 @@ fn main() -> ExitCode {
             let hook: FrameEventsHook = Box::new(move |view, viewport, batch| {
                 hook_host.on_events(view, viewport, batch)
             });
-            run_window(&args, launch, &mut view, Some(hook))
+            run_window(&args, &title, launch, &mut view, Some(hook))
         }
     } else {
         if let Err(message) = load_into(&mut view, &files, &files.html.clone()) {
@@ -902,7 +927,7 @@ fn main() -> ExitCode {
         if args.headless {
             run_headless(&args, &mut view, &source, None)
         } else {
-            run_window(&args, launch, &mut view, None)
+            run_window(&args, &title, launch, &mut view, None)
         }
     };
     match result {
