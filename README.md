@@ -12,7 +12,7 @@ it, edit the HTML/Tailwind UI, and run it.
 
 | What | Revision | Pinned where |
 | --- | --- | --- |
-| Runtime (`velqu-view` crate) | `1d0a562bccdcb21c657423ca8b568cc2beebff88` — the Phase-1 closure record's amendment commit (`docs/evidence/phase1-closure.md` in the framework repo) | `rev = …` in `Cargo.toml` + committed `Cargo.lock` |
+| Runtime (`velqu-view` crate) | `8f6f87d54dc5b43c1e56795eb84d246e2749f887` — corrective-2 repin: framework post-closure corrections 0002 (reactive profile hardening) + 0003 (batched model echo fix); supersedes `1d0a562` | `rev = …` in `Cargo.toml` + committed `Cargo.lock` |
 | Development tool (`velqu-lab` binary) | `3c1ee343a71117984204c04be49c4536604e91b8` — "post-closure correction 0001", which repaired live-window watch scheduling | `dev.sh` (installs `--locked` into `~/.velqu-tools/<full-sha>`) |
 
 ## The workflow and what "save" means

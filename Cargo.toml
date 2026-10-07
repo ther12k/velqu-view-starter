@@ -7,14 +7,17 @@ rust-version = "1.87"
 license = "MIT OR Apache-2.0"
 publish = false
 
-# VelquView baseline pin. The short id 1d0a562 is the Phase-1 closure
-# record's amendment-identity commit (see docs/evidence/phase1-closure.md
-# in the framework repository); the full SHA is recorded here and the
-# committed Cargo.lock pins the entire dependency tree. The dev tool
-# (velqu-lab, via dev.sh) is pinned SEPARATELY at 3c1ee34 — see
-# README.md's revision table.
+# VelquView runtime pin (corrective-2). The short id 8f6f87d is the
+# framework's post-closure correction 0003 commit ("batched model echo
+# write-backs corrupt live editing"), which also carries correction 0002
+# (reactive profile hardening + initial-turn reload acceptance); both are
+# linked from the framework's Phase-1 closure record
+# (docs/evidence/phase1-closure.md in the framework repository). The
+# previous pin 1d0a562 carried both defects. The dev tool (velqu-lab,
+# via dev.sh) is pinned SEPARATELY at 3c1ee34 — see README.md's revision
+# table.
 [dependencies]
-velqu-view = { git = "https://github.com/ther12k/velqu-view.git", rev = "1d0a562bccdcb21c657423ca8b568cc2beebff88" }
+velqu-view = { git = "https://github.com/ther12k/velqu-view.git", rev = "8f6f87d54dc5b43c1e56795eb84d246e2749f887" }
 
 # The application host owns its window loop (src/window.rs): the
 # operations workflow must observe public events so a Save click can
@@ -31,8 +34,10 @@ serde_json = "1"
 rustix = { version = "0.38", default-features = false, features = ["fs"] }
 
 # Diagnostic examples only (examples/*_probe.rs); not used by the app.
-# velqu-shell is here for the two watch-defect probes, which reproduce
-# the 1d0a562 --watch evidence through the shell's run_with_watch path.
+# velqu-shell rides the SAME framework revision as the runtime pin
+# (corrective-2); the watch-defect probes' historical evidence at
+# 1d0a562 lives in docs/verification.md §3, not in the probes' current
+# behavior.
 [dev-dependencies]
-velqu-shell = { git = "https://github.com/ther12k/velqu-view.git", rev = "1d0a562bccdcb21c657423ca8b568cc2beebff88" }
+velqu-shell = { git = "https://github.com/ther12k/velqu-view.git", rev = "8f6f87d54dc5b43c1e56795eb84d246e2749f887" }
 notify = "8.2.0"

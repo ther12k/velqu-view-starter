@@ -2260,7 +2260,7 @@ checksum = "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
 [[package]]
 name = "velqu-reactive"
 version = "0.1.0"
-source = "git+https://github.com/ther12k/velqu-view.git?rev=1d0a562bccdcb21c657423ca8b568cc2beebff88#1d0a562bccdcb21c657423ca8b568cc2beebff88"
+source = "git+https://github.com/ther12k/velqu-view.git?rev=8f6f87d54dc5b43c1e56795eb84d246e2749f887#8f6f87d54dc5b43c1e56795eb84d246e2749f887"
 dependencies = [
  "rquickjs",
 ]
@@ -2268,7 +2268,7 @@ dependencies = [
 [[package]]
 name = "velqu-shell"
 version = "0.1.0"
-source = "git+https://github.com/ther12k/velqu-view.git?rev=1d0a562bccdcb21c657423ca8b568cc2beebff88#1d0a562bccdcb21c657423ca8b568cc2beebff88"
+source = "git+https://github.com/ther12k/velqu-view.git?rev=8f6f87d54dc5b43c1e56795eb84d246e2749f887#8f6f87d54dc5b43c1e56795eb84d246e2749f887"
 dependencies = [
  "arboard",
  "softbuffer",
@@ -2279,7 +2279,7 @@ dependencies = [
 [[package]]
 name = "velqu-tailwind"
 version = "0.1.0"
-source = "git+https://github.com/ther12k/velqu-view.git?rev=1d0a562bccdcb21c657423ca8b568cc2beebff88#1d0a562bccdcb21c657423ca8b568cc2beebff88"
+source = "git+https://github.com/ther12k/velqu-view.git?rev=8f6f87d54dc5b43c1e56795eb84d246e2749f887#8f6f87d54dc5b43c1e56795eb84d246e2749f887"
 dependencies = [
  "cssparser",
 ]
@@ -2287,7 +2287,7 @@ dependencies = [
 [[package]]
 name = "velqu-view"
 version = "0.1.0"
-source = "git+https://github.com/ther12k/velqu-view.git?rev=1d0a562bccdcb21c657423ca8b568cc2beebff88#1d0a562bccdcb21c657423ca8b568cc2beebff88"
+source = "git+https://github.com/ther12k/velqu-view.git?rev=8f6f87d54dc5b43c1e56795eb84d246e2749f887#8f6f87d54dc5b43c1e56795eb84d246e2749f887"
 dependencies = [
  "cssparser",
  "fontdue",
